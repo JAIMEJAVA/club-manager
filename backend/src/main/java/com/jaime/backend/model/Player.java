@@ -1,17 +1,25 @@
 package com.jaime.backend.model;
 
 public class Player {
+    private long id;
     private String nombre;
     private int edad;
     private int dorsal;
     private String posicion;
 
-    public Player(String nombre, int edad, int dorsal, String posicion){
+    public Player(Long id, String nombre, int edad, int dorsal, String posicion){
+       this.id = id;
         this.nombre = nombre;
         this.dorsal = dorsal;
         this.edad = edad;
         this.posicion = posicion;
 
+    }
+
+
+
+    public Long getId(){
+        return  id;
     }
 
     public String getNombre(){
@@ -28,4 +36,23 @@ public class Player {
     public String getPosicion(){
         return posicion;
     }
+
+
+
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public void setEdad(int edad) {
+        this.edad = edad;
+    }
+
+    public void setDorsal(int dorsal) {
+        this.dorsal = dorsal;
+    }
+
+    public void setPosicion(String posicion) {
+        this.posicion = posicion;
+    }
+
 }
