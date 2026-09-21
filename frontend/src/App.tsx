@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import './App.css'
 
 type Player = {
   id: number
@@ -8,8 +9,11 @@ type Player = {
   posicion: string
 }
 
+type Pagina = 'dashboard' | 'plantilla' | 'partidos' | 'estadisticas'
+
 function App() {
   const [players, setPlayers] = useState<Player[]>([])
+  const [paginaActual, setPaginaActual] = useState<Pagina>('dashboard')
 
   const [nombre, setNombre] = useState('')
   const [edad, setEdad] = useState('')
@@ -17,8 +21,8 @@ function App() {
   const [posicion, setPosicion] = useState('')
 
   const [jugadorEditando, setJugadorEditando] = useState<number | null>(null)
+  const [mostrarFormulario, setMostrarFormulario] = useState(false)
 
-  // GET - Cargar jugadores
   const cargarJugadores = () => {
     fetch('http://localhost:8080/api/players')
       .then(response => response.json())
@@ -29,8 +33,16 @@ function App() {
     cargarJugadores()
   }, [])
 
-  // POST - Crear jugador
-  const crearJugador = (event: React.FormEvent) => {
+  const limpiarFormulario = () => {
+    setNombre('')
+    setEdad('')
+    setDorsal('')
+    setPosicion('')
+    setJugadorEditando(null)
+    setMostrarFormulario(false)
+  }
+
+  const crearJugador = (event: FormEvent) => {
     event.preventDefault()
 
     const nuevoJugador = {
@@ -54,35 +66,29 @@ function App() {
       })
   }
 
-  // DELETE - Eliminar jugador
   const eliminarJugador = (id: number) => {
     fetch(`http://localhost:8080/api/players/${id}`, {
       method: 'DELETE'
+    }).then(response => {
+      if (response.ok) {
+        cargarJugadores()
+      }
     })
-      .then(response => {
-        if (response.ok) {
-          cargarJugadores()
-        }
-      })
   }
 
-  // Preparar jugador para editar
   const editarJugador = (player: Player) => {
     setJugadorEditando(player.id)
-
     setNombre(player.nombre)
     setEdad(String(player.edad))
     setDorsal(String(player.dorsal))
     setPosicion(player.posicion)
+    setMostrarFormulario(true)
   }
 
-  // PUT - Guardar cambios
-  const guardarCambios = (event: React.FormEvent) => {
+  const guardarCambios = (event: FormEvent) => {
     event.preventDefault()
 
-    if (jugadorEditando === null) {
-      return
-    }
+    if (jugadorEditando === null) return
 
     const jugadorActualizado = {
       nombre,
@@ -105,98 +111,709 @@ function App() {
       })
   }
 
-  const limpiarFormulario = () => {
+  const abrirNuevoJugador = () => {
+    setJugadorEditando(null)
     setNombre('')
     setEdad('')
     setDorsal('')
     setPosicion('')
-    setJugadorEditando(null)
+    setMostrarFormulario(true)
   }
 
+  const edadMedia =
+    players.length > 0
+      ? (
+          players.reduce((total, player) => total + player.edad, 0) /
+          players.length
+        ).toFixed(1)
+      : '0'
+
+  const posicionesDiferentes = new Set(
+    players.map(player => player.posicion)
+  ).size
+
   return (
-    <div>
-      <h1>⚽ Club Manager</h1>
-      <p>Gestiona tu equipo de fútbol</p>
+    <div className="app">
 
-      <h2>
-        {jugadorEditando === null
-          ? 'Añadir jugador'
-          : 'Editar jugador'}
-      </h2>
+      <aside className="sidebar">
 
-      <form
-        onSubmit={
-          jugadorEditando === null
-            ? crearJugador
-            : guardarCambios
-        }
-      >
-        <input
-          type="text"
-          placeholder="Nombre"
-          value={nombre}
-          onChange={event => setNombre(event.target.value)}
-          required
-        />
+        <div>
 
-        <input
-          type="number"
-          placeholder="Edad"
-          value={edad}
-          onChange={event => setEdad(event.target.value)}
-          required
-        />
+          <div className="brand">
 
-        <input
-          type="number"
-          placeholder="Dorsal"
-          value={dorsal}
-          onChange={event => setDorsal(event.target.value)}
-          required
-        />
+            <div className="brand-icon">
+              ⚽
+            </div>
 
-        <input
-          type="text"
-          placeholder="Posición"
-          value={posicion}
-          onChange={event => setPosicion(event.target.value)}
-          required
-        />
+            <div>
+              <h2>Club Manager</h2>
+              <span>Football Management</span>
+            </div>
 
-        <button type="submit">
-          {jugadorEditando === null
-            ? 'Añadir jugador'
-            : 'Guardar cambios'}
-        </button>
+          </div>
 
-        {jugadorEditando !== null && (
-          <button type="button" onClick={limpiarFormulario}>
-            Cancelar
-          </button>
-        )}
-      </form>
+          <nav>
 
-      <h2>Plantilla</h2>
+            <button
+              className={
+                paginaActual === 'dashboard'
+                  ? 'nav-item active'
+                  : 'nav-item'
+              }
+              onClick={() => setPaginaActual('dashboard')}
+            >
+              <span>▦</span>
+              Dashboard
+            </button>
 
-      {players.map(player => (
-        <div key={player.id}>
-          <strong>
-            #{player.dorsal} {player.nombre}
-          </strong>
+            <button
+              className={
+                paginaActual === 'plantilla'
+                  ? 'nav-item active'
+                  : 'nav-item'
+              }
+              onClick={() => setPaginaActual('plantilla')}
+            >
+              <span>♟</span>
+              Plantilla
+            </button>
 
-          <p>
-            {player.edad} años · {player.posicion}
-          </p>
+            <button
+              className={
+                paginaActual === 'partidos'
+                  ? 'nav-item active'
+                  : 'nav-item'
+              }
+              onClick={() => setPaginaActual('partidos')}
+            >
+              <span>◉</span>
+              Partidos
+            </button>
 
-          <button onClick={() => editarJugador(player)}>
-            Editar
-          </button>
+            <button
+              className={
+                paginaActual === 'estadisticas'
+                  ? 'nav-item active'
+                  : 'nav-item'
+              }
+              onClick={() => setPaginaActual('estadisticas')}
+            >
+              <span>▥</span>
+              Estadísticas
+            </button>
 
-          <button onClick={() => eliminarJugador(player.id)}>
-            Eliminar
-          </button>
+          </nav>
+
         </div>
-      ))}
+
+        <div className="sidebar-footer">
+
+          <div className="avatar">
+            JM
+          </div>
+
+          <div>
+            <strong>Jaime</strong>
+            <span>Administrador</span>
+          </div>
+
+        </div>
+
+      </aside>
+
+      <main className="main-content">
+
+        {paginaActual === 'dashboard' && (
+
+          <>
+
+            <header className="topbar">
+
+              <div>
+
+                <p className="eyebrow">
+                  CLUB MANAGER
+                </p>
+
+                <h1>Dashboard</h1>
+
+                <p className="subtitle">
+                  Resumen general de tu equipo
+                </p>
+
+              </div>
+
+            </header>
+
+            <section className="stats">
+
+              <div className="stat-card">
+
+                <div>
+                  <span>Total jugadores</span>
+                  <strong>{players.length}</strong>
+                </div>
+
+                <div className="stat-icon">
+                  ♟
+                </div>
+
+              </div>
+
+              <div className="stat-card">
+
+                <div>
+                  <span>Edad media</span>
+                  <strong>{edadMedia}</strong>
+                </div>
+
+                <div className="stat-icon">
+                  ◷
+                </div>
+
+              </div>
+
+              <div className="stat-card">
+
+                <div>
+                  <span>Posiciones</span>
+                  <strong>{posicionesDiferentes}</strong>
+                </div>
+
+                <div className="stat-icon">
+                  ◎
+                </div>
+
+              </div>
+
+            </section>
+
+            <section className="dashboard-grid">
+
+              <div className="dashboard-card">
+
+                <div className="dashboard-card-header">
+
+                  <div>
+                    <h2>Plantilla</h2>
+                    <p>Resumen de jugadores</p>
+                  </div>
+
+                  <button
+                    className="link-button"
+                    onClick={() => setPaginaActual('plantilla')}
+                  >
+                    Ver plantilla →
+                  </button>
+
+                </div>
+
+                {players.length === 0 ? (
+
+                  <div className="empty-state">
+                    <div>⚽</div>
+                    <h3>No hay jugadores</h3>
+                    <p>Añade jugadores para comenzar.</p>
+                  </div>
+
+                ) : (
+
+                  <div className="dashboard-players">
+
+                    {players.slice(0, 5).map(player => (
+
+                      <div
+                        className="dashboard-player"
+                        key={player.id}
+                      >
+
+                        <div className="player-info">
+
+                          <div className="player-avatar">
+                            {player.nombre.charAt(0).toUpperCase()}
+                          </div>
+
+                          <div>
+                            <strong>{player.nombre}</strong>
+                            <span>{player.posicion}</span>
+                          </div>
+
+                        </div>
+
+                        <span className="dashboard-dorsal">
+                          #{player.dorsal}
+                        </span>
+
+                      </div>
+
+                    ))}
+
+                  </div>
+
+                )}
+
+              </div>
+
+              <div className="dashboard-card">
+
+                <div className="dashboard-card-header">
+
+                  <div>
+                    <h2>Próximo partido</h2>
+                    <p>Calendario del equipo</p>
+                  </div>
+
+                </div>
+
+                <div className="next-match-empty">
+
+                  <div className="match-icon">
+                    ⚽
+                  </div>
+
+                  <h3>Sin partido programado</h3>
+
+                  <p>
+                    Cuando creemos la sección de partidos
+                    aparecerá aquí el próximo encuentro.
+                  </p>
+
+                  <button
+                    className="primary-button"
+                    onClick={() => setPaginaActual('partidos')}
+                  >
+                    Ir a partidos
+                  </button>
+
+                </div>
+
+              </div>
+
+            </section>
+
+          </>
+
+        )}
+
+        {paginaActual === 'plantilla' && (
+
+          <>
+
+            <header className="topbar">
+
+              <div>
+
+                <p className="eyebrow">
+                  EQUIPO
+                </p>
+
+                <h1>Plantilla</h1>
+
+                <p className="subtitle">
+                  Gestiona los jugadores de tu equipo
+                </p>
+
+              </div>
+
+              <button
+                className="primary-button"
+                onClick={abrirNuevoJugador}
+              >
+                + Nuevo jugador
+              </button>
+
+            </header>
+
+            <section className="stats">
+
+              <div className="stat-card">
+
+                <div>
+                  <span>Total jugadores</span>
+                  <strong>{players.length}</strong>
+                </div>
+
+                <div className="stat-icon">
+                  ♟
+                </div>
+
+              </div>
+
+              <div className="stat-card">
+
+                <div>
+                  <span>Edad media</span>
+                  <strong>{edadMedia}</strong>
+                </div>
+
+                <div className="stat-icon">
+                  ◷
+                </div>
+
+              </div>
+
+              <div className="stat-card">
+
+                <div>
+                  <span>Próximo partido</span>
+                  <strong className="small-stat">
+                    Sin programar
+                  </strong>
+                </div>
+
+                <div className="stat-icon">
+                  ◉
+                </div>
+
+              </div>
+
+            </section>
+
+            {mostrarFormulario && (
+
+              <section className="form-card">
+
+                <div className="form-header">
+
+                  <div>
+
+                    <h2>
+                      {jugadorEditando === null
+                        ? 'Nuevo jugador'
+                        : 'Editar jugador'}
+                    </h2>
+
+                    <p>
+                      {jugadorEditando === null
+                        ? 'Añade un jugador a tu plantilla'
+                        : 'Modifica los datos del jugador'}
+                    </p>
+
+                  </div>
+
+                  <button
+                    className="close-button"
+                    onClick={limpiarFormulario}
+                    type="button"
+                  >
+                    ×
+                  </button>
+
+                </div>
+
+                <form
+                  onSubmit={
+                    jugadorEditando === null
+                      ? crearJugador
+                      : guardarCambios
+                  }
+                >
+
+                  <div className="form-grid">
+
+                    <div className="form-group">
+
+                      <label>Nombre</label>
+
+                      <input
+                        type="text"
+                        placeholder="Nombre del jugador"
+                        value={nombre}
+                        onChange={event =>
+                          setNombre(event.target.value)
+                        }
+                        required
+                      />
+
+                    </div>
+
+                    <div className="form-group">
+
+                      <label>Edad</label>
+
+                      <input
+                        type="number"
+                        placeholder="24"
+                        value={edad}
+                        onChange={event =>
+                          setEdad(event.target.value)
+                        }
+                        required
+                      />
+
+                    </div>
+
+                    <div className="form-group">
+
+                      <label>Dorsal</label>
+
+                      <input
+                        type="number"
+                        placeholder="10"
+                        value={dorsal}
+                        onChange={event =>
+                          setDorsal(event.target.value)
+                        }
+                        required
+                      />
+
+                    </div>
+
+                    <div className="form-group">
+
+                      <label>Posición</label>
+
+                      <select
+                        value={posicion}
+                        onChange={event =>
+                          setPosicion(event.target.value)
+                        }
+                        required
+                      >
+
+                        <option value="">
+                          Selecciona posición
+                        </option>
+
+                        <option value="Portero">
+                          Portero
+                        </option>
+
+                        <option value="Defensa">
+                          Defensa
+                        </option>
+
+                        <option value="Lateral">
+                          Lateral
+                        </option>
+
+                        <option value="Mediocentro">
+                          Mediocentro
+                        </option>
+
+                        <option value="Extremo">
+                          Extremo
+                        </option>
+
+                        <option value="Delantero">
+                          Delantero
+                        </option>
+
+                      </select>
+
+                    </div>
+
+                  </div>
+
+                  <div className="form-actions">
+
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={limpiarFormulario}
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="primary-button"
+                    >
+                      {jugadorEditando === null
+                        ? 'Añadir jugador'
+                        : 'Guardar cambios'}
+                    </button>
+
+                  </div>
+
+                </form>
+
+              </section>
+
+            )}
+
+            <section className="players-card">
+
+              <div className="players-header">
+
+                <div>
+                  <h2>Jugadores</h2>
+
+                  <p>
+                    {players.length} jugadores en la plantilla
+                  </p>
+                </div>
+
+              </div>
+
+              {players.length === 0 ? (
+
+                <div className="empty-state">
+
+                  <div>⚽</div>
+
+                  <h3>No hay jugadores</h3>
+
+                  <p>
+                    Añade tu primer jugador para comenzar.
+                  </p>
+
+                </div>
+
+              ) : (
+
+                <div className="table-wrapper">
+
+                  <table>
+
+                    <thead>
+
+                      <tr>
+                        <th>JUGADOR</th>
+                        <th>DORSAL</th>
+                        <th>EDAD</th>
+                        <th>POSICIÓN</th>
+                        <th></th>
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      {players.map(player => (
+
+                        <tr key={player.id}>
+
+                          <td>
+
+                            <div className="player-info">
+
+                              <div className="player-avatar">
+                                {player.nombre
+                                  .charAt(0)
+                                  .toUpperCase()}
+                              </div>
+
+                              <div>
+
+                                <strong>
+                                  {player.nombre}
+                                </strong>
+
+                                <span>
+                                  ID #{player.id}
+                                </span>
+
+                              </div>
+
+                            </div>
+
+                          </td>
+
+                          <td>
+
+                            <span className="dorsal">
+                              {player.dorsal}
+                            </span>
+
+                          </td>
+
+                          <td>
+                            {player.edad} años
+                          </td>
+
+                          <td>
+
+                            <span className="position">
+                              {player.posicion}
+                            </span>
+
+                          </td>
+
+                          <td>
+
+                            <div className="actions">
+
+                              <button
+                                className="edit-button"
+                                onClick={() =>
+                                  editarJugador(player)
+                                }
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                className="delete-button"
+                                onClick={() =>
+                                  eliminarJugador(player.id)
+                                }
+                              >
+                                Eliminar
+                              </button>
+
+                            </div>
+
+                          </td>
+
+                        </tr>
+
+                      ))}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              )}
+
+            </section>
+
+          </>
+
+        )}
+
+        {paginaActual === 'partidos' && (
+
+          <section className="placeholder-page">
+
+            <div className="placeholder-icon">
+              ⚽
+            </div>
+
+            <h1>Partidos</h1>
+
+            <p>
+              Aquí construiremos el calendario,
+              resultados y modo partido en directo.
+            </p>
+
+          </section>
+
+        )}
+
+        {paginaActual === 'estadisticas' && (
+
+          <section className="placeholder-page">
+
+            <div className="placeholder-icon">
+              📊
+            </div>
+
+            <h1>Estadísticas</h1>
+
+            <p>
+              Aquí aparecerán estadísticas del equipo
+              y de los jugadores.
+            </p>
+
+          </section>
+
+        )}
+
+      </main>
+
     </div>
   )
 }
