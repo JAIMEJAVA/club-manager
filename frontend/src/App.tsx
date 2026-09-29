@@ -9,10 +9,21 @@ type Player = {
   posicion: string
 }
 
+type Match = {
+  id: number
+  rival: string
+  fecha: string
+  local: boolean
+  golesLocal: number
+  golesVisitante: number
+  estado: 'PROGRAMADO' | 'EN_JUEGO' | 'FINALIZADO'
+}
+
 type Pagina = 'dashboard' | 'plantilla' | 'partidos' | 'estadisticas'
 
 function App() {
   const [players, setPlayers] = useState<Player[]>([])
+  const [matches, setMatches] = useState<Match[]>([])
   const [paginaActual, setPaginaActual] = useState<Pagina>('dashboard')
 
   const [nombre, setNombre] = useState('')
@@ -29,8 +40,15 @@ function App() {
       .then(data => setPlayers(data))
   }
 
+  const cargarPartidos = () => {
+    fetch('http://localhost:8080/api/matches')
+      .then(response => response.json())
+      .then(data => setMatches(data))
+  }
+
   useEffect(() => {
     cargarJugadores()
+    cargarPartidos()
   }, [])
 
   const limpiarFormulario = () => {
@@ -134,26 +152,18 @@ function App() {
 
   return (
     <div className="app">
-
       <aside className="sidebar">
-
         <div>
-
           <div className="brand">
-
-            <div className="brand-icon">
-              ⚽
-            </div>
+            <div className="brand-icon">⚽</div>
 
             <div>
               <h2>Club Manager</h2>
               <span>Football Management</span>
             </div>
-
           </div>
 
           <nav>
-
             <button
               className={
                 paginaActual === 'dashboard'
@@ -201,99 +211,64 @@ function App() {
               <span>▥</span>
               Estadísticas
             </button>
-
           </nav>
-
         </div>
 
         <div className="sidebar-footer">
-
-          <div className="avatar">
-            JM
-          </div>
+          <div className="avatar">JM</div>
 
           <div>
             <strong>Jaime</strong>
             <span>Administrador</span>
           </div>
-
         </div>
-
       </aside>
 
       <main className="main-content">
-
         {paginaActual === 'dashboard' && (
-
           <>
-
             <header className="topbar">
-
               <div>
-
-                <p className="eyebrow">
-                  CLUB MANAGER
-                </p>
-
+                <p className="eyebrow">CLUB MANAGER</p>
                 <h1>Dashboard</h1>
-
                 <p className="subtitle">
                   Resumen general de tu equipo
                 </p>
-
               </div>
-
             </header>
 
             <section className="stats">
-
               <div className="stat-card">
-
                 <div>
                   <span>Total jugadores</span>
                   <strong>{players.length}</strong>
                 </div>
 
-                <div className="stat-icon">
-                  ♟
-                </div>
-
+                <div className="stat-icon">♟</div>
               </div>
 
               <div className="stat-card">
-
                 <div>
                   <span>Edad media</span>
                   <strong>{edadMedia}</strong>
                 </div>
 
-                <div className="stat-icon">
-                  ◷
-                </div>
-
+                <div className="stat-icon">◷</div>
               </div>
 
               <div className="stat-card">
-
                 <div>
                   <span>Posiciones</span>
                   <strong>{posicionesDiferentes}</strong>
                 </div>
 
-                <div className="stat-icon">
-                  ◎
-                </div>
-
+                <div className="stat-icon">◎</div>
               </div>
-
             </section>
 
             <section className="dashboard-grid">
-
               <div className="dashboard-card">
-
                 <div className="dashboard-card-header">
-
                   <div>
                     <h2>Plantilla</h2>
                     <p>Resumen de jugadores</p>
@@ -305,30 +280,22 @@ function App() {
                   >
                     Ver plantilla →
                   </button>
-
                 </div>
 
                 {players.length === 0 ? (
-
                   <div className="empty-state">
                     <div>⚽</div>
                     <h3>No hay jugadores</h3>
                     <p>Añade jugadores para comenzar.</p>
                   </div>
-
                 ) : (
-
                   <div className="dashboard-players">
-
                     {players.slice(0, 5).map(player => (
-
                       <div
                         className="dashboard-player"
                         key={player.id}
                       >
-
                         <div className="player-info">
-
                           <div className="player-avatar">
                             {player.nombre.charAt(0).toUpperCase()}
                           </div>
@@ -337,45 +304,32 @@ function App() {
                             <strong>{player.nombre}</strong>
                             <span>{player.posicion}</span>
                           </div>
-
                         </div>
 
                         <span className="dashboard-dorsal">
                           #{player.dorsal}
                         </span>
-
                       </div>
-
                     ))}
-
                   </div>
-
                 )}
-
               </div>
 
               <div className="dashboard-card">
-
                 <div className="dashboard-card-header">
-
                   <div>
                     <h2>Próximo partido</h2>
                     <p>Calendario del equipo</p>
                   </div>
-
                 </div>
 
                 <div className="next-match-empty">
-
-                  <div className="match-icon">
-                    ⚽
-                  </div>
-
-                  <h3>Sin partido programado</h3>
+                  <div className="match-icon">⚽</div>
+                  <h3>Consulta tus partidos</h3>
 
                   <p>
-                    Cuando creemos la sección de partidos
-                    aparecerá aquí el próximo encuentro.
+                    Entra en la sección de partidos para consultar
+                    el calendario y los resultados.
                   </p>
 
                   <button
@@ -384,35 +338,22 @@ function App() {
                   >
                     Ir a partidos
                   </button>
-
                 </div>
-
               </div>
-
             </section>
-
           </>
-
         )}
 
         {paginaActual === 'plantilla' && (
-
           <>
-
             <header className="topbar">
-
               <div>
-
-                <p className="eyebrow">
-                  EQUIPO
-                </p>
-
+                <p className="eyebrow">EQUIPO</p>
                 <h1>Plantilla</h1>
 
                 <p className="subtitle">
                   Gestiona los jugadores de tu equipo
                 </p>
-
               </div>
 
               <button
@@ -421,62 +362,41 @@ function App() {
               >
                 + Nuevo jugador
               </button>
-
             </header>
 
             <section className="stats">
-
               <div className="stat-card">
-
                 <div>
                   <span>Total jugadores</span>
                   <strong>{players.length}</strong>
                 </div>
 
-                <div className="stat-icon">
-                  ♟
-                </div>
-
+                <div className="stat-icon">♟</div>
               </div>
 
               <div className="stat-card">
-
                 <div>
                   <span>Edad media</span>
                   <strong>{edadMedia}</strong>
                 </div>
 
-                <div className="stat-icon">
-                  ◷
-                </div>
-
+                <div className="stat-icon">◷</div>
               </div>
 
               <div className="stat-card">
-
                 <div>
-                  <span>Próximo partido</span>
-                  <strong className="small-stat">
-                    Sin programar
-                  </strong>
+                  <span>Partidos</span>
+                  <strong>{matches.length}</strong>
                 </div>
 
-                <div className="stat-icon">
-                  ◉
-                </div>
-
+                <div className="stat-icon">◉</div>
               </div>
-
             </section>
 
             {mostrarFormulario && (
-
               <section className="form-card">
-
                 <div className="form-header">
-
                   <div>
-
                     <h2>
                       {jugadorEditando === null
                         ? 'Nuevo jugador'
@@ -488,7 +408,6 @@ function App() {
                         ? 'Añade un jugador a tu plantilla'
                         : 'Modifica los datos del jugador'}
                     </p>
-
                   </div>
 
                   <button
@@ -498,7 +417,6 @@ function App() {
                   >
                     ×
                   </button>
-
                 </div>
 
                 <form
@@ -508,11 +426,8 @@ function App() {
                       : guardarCambios
                   }
                 >
-
                   <div className="form-grid">
-
                     <div className="form-group">
-
                       <label>Nombre</label>
 
                       <input
@@ -524,11 +439,9 @@ function App() {
                         }
                         required
                       />
-
                     </div>
 
                     <div className="form-group">
-
                       <label>Edad</label>
 
                       <input
@@ -540,11 +453,9 @@ function App() {
                         }
                         required
                       />
-
                     </div>
 
                     <div className="form-group">
-
                       <label>Dorsal</label>
 
                       <input
@@ -556,11 +467,9 @@ function App() {
                         }
                         required
                       />
-
                     </div>
 
                     <div className="form-group">
-
                       <label>Posición</label>
 
                       <select
@@ -570,43 +479,24 @@ function App() {
                         }
                         required
                       >
-
                         <option value="">
                           Selecciona posición
                         </option>
-
-                        <option value="Portero">
-                          Portero
-                        </option>
-
-                        <option value="Defensa">
-                          Defensa
-                        </option>
-
-                        <option value="Lateral">
-                          Lateral
-                        </option>
-
+                        <option value="Portero">Portero</option>
+                        <option value="Defensa">Defensa</option>
+                        <option value="Lateral">Lateral</option>
                         <option value="Mediocentro">
                           Mediocentro
                         </option>
-
-                        <option value="Extremo">
-                          Extremo
-                        </option>
-
+                        <option value="Extremo">Extremo</option>
                         <option value="Delantero">
                           Delantero
                         </option>
-
                       </select>
-
                     </div>
-
                   </div>
 
                   <div className="form-actions">
-
                     <button
                       type="button"
                       className="secondary-button"
@@ -623,51 +513,29 @@ function App() {
                         ? 'Añadir jugador'
                         : 'Guardar cambios'}
                     </button>
-
                   </div>
-
                 </form>
-
               </section>
-
             )}
 
             <section className="players-card">
-
               <div className="players-header">
-
                 <div>
                   <h2>Jugadores</h2>
-
-                  <p>
-                    {players.length} jugadores en la plantilla
-                  </p>
+                  <p>{players.length} jugadores en la plantilla</p>
                 </div>
-
               </div>
 
               {players.length === 0 ? (
-
                 <div className="empty-state">
-
                   <div>⚽</div>
-
                   <h3>No hay jugadores</h3>
-
-                  <p>
-                    Añade tu primer jugador para comenzar.
-                  </p>
-
+                  <p>Añade tu primer jugador para comenzar.</p>
                 </div>
-
               ) : (
-
                 <div className="table-wrapper">
-
                   <table>
-
                     <thead>
-
                       <tr>
                         <th>JUGADOR</th>
                         <th>DORSAL</th>
@@ -675,19 +543,13 @@ function App() {
                         <th>POSICIÓN</th>
                         <th></th>
                       </tr>
-
                     </thead>
 
                     <tbody>
-
                       {players.map(player => (
-
                         <tr key={player.id}>
-
                           <td>
-
                             <div className="player-info">
-
                               <div className="player-avatar">
                                 {player.nombre
                                   .charAt(0)
@@ -695,45 +557,28 @@ function App() {
                               </div>
 
                               <div>
-
-                                <strong>
-                                  {player.nombre}
-                                </strong>
-
-                                <span>
-                                  ID #{player.id}
-                                </span>
-
+                                <strong>{player.nombre}</strong>
+                                <span>ID #{player.id}</span>
                               </div>
-
                             </div>
-
                           </td>
 
                           <td>
-
                             <span className="dorsal">
                               {player.dorsal}
                             </span>
-
                           </td>
 
-                          <td>
-                            {player.edad} años
-                          </td>
+                          <td>{player.edad} años</td>
 
                           <td>
-
                             <span className="position">
                               {player.posicion}
                             </span>
-
                           </td>
 
                           <td>
-
                             <div className="actions">
-
                               <button
                                 className="edit-button"
                                 onClick={() =>
@@ -751,69 +596,111 @@ function App() {
                               >
                                 Eliminar
                               </button>
-
                             </div>
-
                           </td>
-
                         </tr>
-
                       ))}
-
                     </tbody>
-
                   </table>
-
                 </div>
-
               )}
-
             </section>
-
           </>
-
         )}
 
         {paginaActual === 'partidos' && (
+          <>
+            <header className="topbar">
+              <div>
+                <p className="eyebrow">CALENDARIO</p>
+                <h1>Partidos</h1>
 
-          <section className="placeholder-page">
+                <p className="subtitle">
+                  Consulta los próximos partidos y resultados
+                </p>
+              </div>
+            </header>
 
-            <div className="placeholder-icon">
-              ⚽
-            </div>
+            <section className="players-card">
+              <div className="players-header">
+                <div>
+                  <h2>Calendario</h2>
+                  <p>{matches.length} partidos registrados</p>
+                </div>
+              </div>
 
-            <h1>Partidos</h1>
+              {matches.length === 0 ? (
+                <div className="empty-state">
+                  <div>⚽</div>
+                  <h3>No hay partidos</h3>
+                  <p>
+                    Todavía no hay ningún partido registrado.
+                  </p>
+                </div>
+              ) : (
+                <div className="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>FECHA</th>
+                        <th>PARTIDO</th>
+                        <th>RESULTADO</th>
+                        <th>ESTADO</th>
+                      </tr>
+                    </thead>
 
-            <p>
-              Aquí construiremos el calendario,
-              resultados y modo partido en directo.
-            </p>
+                    <tbody>
+                      {matches.map(match => (
+                        <tr key={match.id}>
+                          <td>
+                            {new Date(
+                              `${match.fecha}T00:00:00`
+                            ).toLocaleDateString('es-ES')}
+                          </td>
 
-          </section>
+                          <td>
+                            <strong>
+                              {match.local
+                                ? `Club Manager - ${match.rival}`
+                                : `${match.rival} - Club Manager`}
+                            </strong>
+                          </td>
 
+                          <td>
+                            <span className="dorsal">
+                              {match.golesLocal}
+                              {' - '}
+                              {match.golesVisitante}
+                            </span>
+                          </td>
+
+                          <td>
+                            <span className="position">
+                              {match.estado.replace('_', ' ')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
         )}
 
         {paginaActual === 'estadisticas' && (
-
           <section className="placeholder-page">
-
-            <div className="placeholder-icon">
-              📊
-            </div>
-
+            <div className="placeholder-icon">📊</div>
             <h1>Estadísticas</h1>
 
             <p>
-              Aquí aparecerán estadísticas del equipo
-              y de los jugadores.
+              Aquí aparecerán estadísticas del equipo y de los
+              jugadores.
             </p>
-
           </section>
-
         )}
-
       </main>
-
     </div>
   )
 }
