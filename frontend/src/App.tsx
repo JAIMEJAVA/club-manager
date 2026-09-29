@@ -37,6 +37,11 @@ function App() {
   const [rival, setRival] = useState('')
   const [fecha, setFecha] = useState('')
   const [local, setLocal] = useState(true)
+  const [partidoEditando, setPartidoEditando] = useState<number | null>(null)
+  const [golesLocal, setGolesLocal] = useState('0')
+  const [golesVisitante, setGolesVisitante] = useState('0')
+  const [estadoPartido, setEstadoPartido] =
+    useState<Match['estado']>('PROGRAMADO')
   const [mostrarFormularioPartido, setMostrarFormularioPartido] =
     useState(false)
 
@@ -148,7 +153,16 @@ function App() {
     setRival('')
     setFecha('')
     setLocal(true)
+    setPartidoEditando(null)
+    setGolesLocal('0')
+    setGolesVisitante('0')
+    setEstadoPartido('PROGRAMADO')
     setMostrarFormularioPartido(false)
+  }
+
+  const abrirNuevoPartido = () => {
+    limpiarFormularioPartido()
+    setMostrarFormularioPartido(true)
   }
 
   const crearPartido = (event: FormEvent) => {
@@ -158,9 +172,9 @@ function App() {
       rival,
       fecha,
       local,
-      golesLocal: 0,
-      golesVisitante: 0,
-      estado: 'PROGRAMADO' as const
+      golesLocal: Number(golesLocal),
+      golesVisitante: Number(golesVisitante),
+      estado: estadoPartido
     }
 
     fetch('http://localhost:8080/api/matches', {
@@ -177,15 +191,54 @@ function App() {
       })
   }
 
-  const eliminarPartido = (id: number) => {
-  fetch(`http://localhost:8080/api/matches/${id}`, {
-    method: 'DELETE'
-  }).then(response => {
-    if (response.ok) {
-      cargarPartidos()
+  const editarPartido = (match: Match) => {
+    setPartidoEditando(match.id)
+    setRival(match.rival)
+    setFecha(match.fecha)
+    setLocal(match.local)
+    setGolesLocal(String(match.golesLocal))
+    setGolesVisitante(String(match.golesVisitante))
+    setEstadoPartido(match.estado)
+    setMostrarFormularioPartido(true)
+  }
+
+  const guardarPartido = (event: FormEvent) => {
+    event.preventDefault()
+
+    if (partidoEditando === null) return
+
+    const partidoActualizado = {
+      rival,
+      fecha,
+      local,
+      golesLocal: Number(golesLocal),
+      golesVisitante: Number(golesVisitante),
+      estado: estadoPartido
     }
-  })
-}
+
+    fetch(`http://localhost:8080/api/matches/${partidoEditando}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(partidoActualizado)
+    })
+      .then(response => response.json())
+      .then(() => {
+        cargarPartidos()
+        limpiarFormularioPartido()
+      })
+  }
+
+  const eliminarPartido = (id: number) => {
+    fetch(`http://localhost:8080/api/matches/${id}`, {
+      method: 'DELETE'
+    }).then(response => {
+      if (response.ok) {
+        cargarPartidos()
+      }
+    })
+  }
 
   const edadMedia =
     players.length > 0
@@ -671,7 +724,7 @@ function App() {
 
               <button
                 className="primary-button"
-                onClick={() => setMostrarFormularioPartido(true)}
+                onClick={abrirNuevoPartido}
               >
                 + Nuevo partido
               </button>
@@ -681,8 +734,17 @@ function App() {
               <section className="form-card">
                 <div className="form-header">
                   <div>
-                    <h2>Nuevo partido</h2>
-                    <p>Programa un partido para tu equipo</p>
+                    <h2>
+                      {partidoEditando === null
+                        ? 'Nuevo partido'
+                        : 'Editar partido'}
+                    </h2>
+
+                    <p>
+                      {partidoEditando === null
+                        ? 'Programa un partido para tu equipo'
+                        : 'Actualiza el marcador y el estado'}
+                    </p>
                   </div>
 
                   <button
@@ -694,7 +756,13 @@ function App() {
                   </button>
                 </div>
 
-                <form onSubmit={crearPartido}>
+                <form
+                  onSubmit={
+                    partidoEditando === null
+                      ? crearPartido
+                      : guardarPartido
+                  }
+                >
                   <div className="form-grid">
                     <div className="form-group">
                       <label>Rival</label>
@@ -736,6 +804,57 @@ function App() {
                         <option value="false">Visitante</option>
                       </select>
                     </div>
+
+                    <div className="form-group">
+                      <label>Goles local</label>
+
+                      <input
+                        type="number"
+                        min="0"
+                        value={golesLocal}
+                        onChange={event =>
+                          setGolesLocal(event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Goles visitante</label>
+
+                      <input
+                        type="number"
+                        min="0"
+                        value={golesVisitante}
+                        onChange={event =>
+                          setGolesVisitante(event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Estado</label>
+
+                      <select
+                        value={estadoPartido}
+                        onChange={event =>
+                          setEstadoPartido(
+                            event.target.value as Match['estado']
+                          )
+                        }
+                      >
+                        <option value="PROGRAMADO">
+                          Programado
+                        </option>
+                        <option value="EN_JUEGO">
+                          En juego
+                        </option>
+                        <option value="FINALIZADO">
+                          Finalizado
+                        </option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="form-actions">
@@ -751,7 +870,9 @@ function App() {
                       type="submit"
                       className="primary-button"
                     >
-                      Crear partido
+                      {partidoEditando === null
+                        ? 'Crear partido'
+                        : 'Guardar cambios'}
                     </button>
                   </div>
                 </form>
@@ -817,14 +938,28 @@ function App() {
                               {match.estado.replace('_', ' ')}
                             </span>
                           </td>
+
                           <td>
-                          <button
-                            className="delete-button"
-                            onClick={() => eliminarPartido(match.id)}
-                          >
-                            Eliminar
-                          </button>
-                        </td>
+                            <div className="actions">
+                              <button
+                                className="edit-button"
+                                onClick={() =>
+                                  editarPartido(match)
+                                }
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                className="delete-button"
+                                onClick={() =>
+                                  eliminarPartido(match.id)
+                                }
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
