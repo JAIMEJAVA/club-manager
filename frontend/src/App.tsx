@@ -34,6 +34,12 @@ function App() {
   const [jugadorEditando, setJugadorEditando] = useState<number | null>(null)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
 
+  const [rival, setRival] = useState('')
+  const [fecha, setFecha] = useState('')
+  const [local, setLocal] = useState(true)
+  const [mostrarFormularioPartido, setMostrarFormularioPartido] =
+    useState(false)
+
   const cargarJugadores = () => {
     fetch('http://localhost:8080/api/players')
       .then(response => response.json())
@@ -136,6 +142,39 @@ function App() {
     setDorsal('')
     setPosicion('')
     setMostrarFormulario(true)
+  }
+
+  const limpiarFormularioPartido = () => {
+    setRival('')
+    setFecha('')
+    setLocal(true)
+    setMostrarFormularioPartido(false)
+  }
+
+  const crearPartido = (event: FormEvent) => {
+    event.preventDefault()
+
+    const nuevoPartido = {
+      rival,
+      fecha,
+      local,
+      golesLocal: 0,
+      golesVisitante: 0,
+      estado: 'PROGRAMADO' as const
+    }
+
+    fetch('http://localhost:8080/api/matches', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(nuevoPartido)
+    })
+      .then(response => response.json())
+      .then(() => {
+        cargarPartidos()
+        limpiarFormularioPartido()
+      })
   }
 
   const edadMedia =
@@ -318,18 +357,18 @@ function App() {
               <div className="dashboard-card">
                 <div className="dashboard-card-header">
                   <div>
-                    <h2>Próximo partido</h2>
+                    <h2>Partidos</h2>
                     <p>Calendario del equipo</p>
                   </div>
                 </div>
 
                 <div className="next-match-empty">
                   <div className="match-icon">⚽</div>
-                  <h3>Consulta tus partidos</h3>
+                  <h3>{matches.length} partidos registrados</h3>
 
                   <p>
-                    Entra en la sección de partidos para consultar
-                    el calendario y los resultados.
+                    Entra en Partidos para consultar el calendario
+                    y añadir nuevos encuentros.
                   </p>
 
                   <button
@@ -619,7 +658,95 @@ function App() {
                   Consulta los próximos partidos y resultados
                 </p>
               </div>
+
+              <button
+                className="primary-button"
+                onClick={() => setMostrarFormularioPartido(true)}
+              >
+                + Nuevo partido
+              </button>
             </header>
+
+            {mostrarFormularioPartido && (
+              <section className="form-card">
+                <div className="form-header">
+                  <div>
+                    <h2>Nuevo partido</h2>
+                    <p>Programa un partido para tu equipo</p>
+                  </div>
+
+                  <button
+                    className="close-button"
+                    onClick={limpiarFormularioPartido}
+                    type="button"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <form onSubmit={crearPartido}>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Rival</label>
+
+                      <input
+                        type="text"
+                        placeholder="Nombre del rival"
+                        value={rival}
+                        onChange={event =>
+                          setRival(event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Fecha</label>
+
+                      <input
+                        type="date"
+                        value={fecha}
+                        onChange={event =>
+                          setFecha(event.target.value)
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Condición</label>
+
+                      <select
+                        value={local ? 'true' : 'false'}
+                        onChange={event =>
+                          setLocal(event.target.value === 'true')
+                        }
+                      >
+                        <option value="true">Local</option>
+                        <option value="false">Visitante</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={limpiarFormularioPartido}
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="primary-button"
+                    >
+                      Crear partido
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
 
             <section className="players-card">
               <div className="players-header">
