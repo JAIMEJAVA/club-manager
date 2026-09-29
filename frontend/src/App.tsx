@@ -177,6 +177,16 @@ function App() {
       })
   }
 
+  const eliminarPartido = (id: number) => {
+  fetch(`http://localhost:8080/api/matches/${id}`, {
+    method: 'DELETE'
+  }).then(response => {
+    if (response.ok) {
+      cargarPartidos()
+    }
+  })
+}
+
   const edadMedia =
     players.length > 0
       ? (
@@ -773,6 +783,7 @@ function App() {
                         <th>PARTIDO</th>
                         <th>RESULTADO</th>
                         <th>ESTADO</th>
+                        <th>ACCIONES</th>
                       </tr>
                     </thead>
 
@@ -806,6 +817,14 @@ function App() {
                               {match.estado.replace('_', ' ')}
                             </span>
                           </td>
+                          <td>
+                          <button
+                            className="delete-button"
+                            onClick={() => eliminarPartido(match.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
                         </tr>
                       ))}
                     </tbody>
