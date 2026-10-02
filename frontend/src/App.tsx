@@ -19,11 +19,32 @@ type Match = {
   estado: 'PROGRAMADO' | 'EN_JUEGO' | 'FINALIZADO'
 }
 
+type MatchEvent = {
+  id: number
+  type: 'GOAL' | 'YELLOW_CARD' | 'RED_CARD' | 'SUBSTITUTION'
+  minute: number
+  player: Player | null
+  rivalDorsal: number | null
+  description: string | null
+}
+
 type Pagina = 'dashboard' | 'plantilla' | 'partidos' | 'estadisticas'
+
+const nombreTipoEvento = (type: MatchEvent['type']) => {
+  const types = {
+    GOAL: '⚽ Gol',
+    YELLOW_CARD: '🟨 Amarilla',
+    RED_CARD: '🟥 Roja',
+    SUBSTITUTION: '🔄 Cambio'
+  }
+
+  return types[type]
+}
 
 function App() {
   const [players, setPlayers] = useState<Player[]>([])
   const [matches, setMatches] = useState<Match[]>([])
+  const [events, setEvents] = useState<MatchEvent[]>([])
   const [paginaActual, setPaginaActual] = useState<Pagina>('dashboard')
 
   const [nombre, setNombre] = useState('')
@@ -45,6 +66,17 @@ function App() {
   const [mostrarFormularioPartido, setMostrarFormularioPartido] =
     useState(false)
 
+  const [partidoSeleccionado, setPartidoSeleccionado] =
+    useState<Match | null>(null)
+  const [mostrarFormularioEvento, setMostrarFormularioEvento] =
+    useState(false)
+  const [tipoEvento, setTipoEvento] =
+    useState<MatchEvent['type']>('GOAL')
+  const [minutoEvento, setMinutoEvento] = useState('')
+  const [jugadorEventoId, setJugadorEventoId] = useState('')
+  const [dorsalRivalEvento, setDorsalRivalEvento] = useState('')
+  const [descripcionEvento, setDescripcionEvento] = useState('')
+
   const cargarJugadores = () => {
     fetch('http://localhost:8080/api/players')
       .then(response => response.json())
@@ -55,6 +87,12 @@ function App() {
     fetch('http://localhost:8080/api/matches')
       .then(response => response.json())
       .then(data => setMatches(data))
+  }
+
+  const cargarEventos = (matchId: number) => {
+    fetch(`http://localhost:8080/api/matches/${matchId}/events`)
+      .then(response => response.json())
+      .then(data => setEvents(data))
   }
 
   useEffect(() => {
@@ -235,7 +273,83 @@ function App() {
       method: 'DELETE'
     }).then(response => {
       if (response.ok) {
+        if (partidoSeleccionado?.id === id) {
+          setPartidoSeleccionado(null)
+          setEvents([])
+        }
+
         cargarPartidos()
+      }
+    })
+  }
+
+  const limpiarFormularioEvento = () => {
+    setTipoEvento('GOAL')
+    setMinutoEvento('')
+    setJugadorEventoId('')
+    setDorsalRivalEvento('')
+    setDescripcionEvento('')
+    setMostrarFormularioEvento(false)
+  }
+
+  const abrirEventos = (match: Match) => {
+    setPartidoSeleccionado(match)
+    cargarEventos(match.id)
+    limpiarFormularioEvento()
+  }
+
+  const cerrarEventos = () => {
+    setPartidoSeleccionado(null)
+    setEvents([])
+    limpiarFormularioEvento()
+  }
+
+  const crearEvento = (event: FormEvent) => {
+    event.preventDefault()
+
+    if (partidoSeleccionado === null) return
+
+    const playerQuery = jugadorEventoId
+      ? `?playerId=${jugadorEventoId}`
+      : ''
+
+    const nuevoEvento = {
+      type: tipoEvento,
+      minute: Number(minutoEvento),
+      rivalDorsal: dorsalRivalEvento
+        ? Number(dorsalRivalEvento)
+        : null,
+      description: descripcionEvento
+    }
+
+    fetch(
+      `http://localhost:8080/api/matches/${partidoSeleccionado.id}/events${playerQuery}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(nuevoEvento)
+      }
+    )
+      .then(response => response.json())
+      .then(() => {
+        cargarEventos(partidoSeleccionado.id)
+        limpiarFormularioEvento()
+      })
+  }
+
+  const eliminarEvento = (eventId: number) => {
+    if (partidoSeleccionado === null) return
+
+    fetch(
+      `http://localhost:8080/api/matches/${partidoSeleccionado.id}/events/${eventId}`,
+      {
+        method: 'DELETE'
+      }
+    ).then(response => {
+      if (response.ok) {
+        cargarEventos(partidoSeleccionado.id)
       }
     })
   }
@@ -943,6 +1057,13 @@ function App() {
                             <div className="actions">
                               <button
                                 className="edit-button"
+                                onClick={() => abrirEventos(match)}
+                              >
+                                Eventos
+                              </button>
+
+                              <button
+                                className="edit-button"
                                 onClick={() =>
                                   editarPartido(match)
                                 }
@@ -967,6 +1088,224 @@ function App() {
                 </div>
               )}
             </section>
+
+            {partidoSeleccionado !== null && (
+              <>
+                <section className="form-card">
+                  <div className="form-header">
+                    <div>
+                      <h2>
+                        Eventos: {partidoSeleccionado.local
+                          ? `Club Manager - ${partidoSeleccionado.rival}`
+                          : `${partidoSeleccionado.rival} - Club Manager`}
+                      </h2>
+
+                      <p>
+                        {events.length} eventos registrados en este
+                        partido
+                      </p>
+                    </div>
+
+                    <div className="actions">
+                      <button
+                        className="secondary-button"
+                        onClick={cerrarEventos}
+                        type="button"
+                      >
+                        Cerrar
+                      </button>
+
+                      <button
+                        className="primary-button"
+                        onClick={() =>
+                          setMostrarFormularioEvento(true)
+                        }
+                        type="button"
+                      >
+                        + Añadir evento
+                      </button>
+                    </div>
+                  </div>
+
+                  {mostrarFormularioEvento && (
+                    <form onSubmit={crearEvento}>
+                      <div className="form-grid">
+                        <div className="form-group">
+                          <label>Tipo de evento</label>
+
+                          <select
+                            value={tipoEvento}
+                            onChange={event =>
+                              setTipoEvento(
+                                event.target.value as MatchEvent['type']
+                              )
+                            }
+                          >
+                            <option value="GOAL">⚽ Gol</option>
+                            <option value="YELLOW_CARD">
+                              🟨 Amarilla
+                            </option>
+                            <option value="RED_CARD">
+                              🟥 Roja
+                            </option>
+                            <option value="SUBSTITUTION">
+                              🔄 Cambio
+                            </option>
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Minuto</label>
+
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="32"
+                            value={minutoEvento}
+                            onChange={event =>
+                              setMinutoEvento(event.target.value)
+                            }
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Jugador propio</label>
+
+                          <select
+                            value={jugadorEventoId}
+                            onChange={event =>
+                              setJugadorEventoId(event.target.value)
+                            }
+                          >
+                            <option value="">
+                              No aplica / evento rival
+                            </option>
+
+                            {players.map(player => (
+                              <option
+                                key={player.id}
+                                value={player.id}
+                              >
+                                #{player.dorsal} {player.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Dorsal rival</label>
+
+                          <input
+                            type="number"
+                            min="1"
+                            placeholder="9"
+                            value={dorsalRivalEvento}
+                            onChange={event =>
+                              setDorsalRivalEvento(event.target.value)
+                            }
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Descripción</label>
+
+                          <input
+                            type="text"
+                            placeholder="Detalle opcional"
+                            value={descripcionEvento}
+                            onChange={event =>
+                              setDescripcionEvento(event.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-actions">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={limpiarFormularioEvento}
+                        >
+                          Cancelar
+                        </button>
+
+                        <button
+                          type="submit"
+                          className="primary-button"
+                        >
+                          Guardar evento
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {!mostrarFormularioEvento &&
+                    (events.length === 0 ? (
+                      <div className="empty-state">
+                        <div>⚽</div>
+                        <h3>No hay eventos</h3>
+                        <p>
+                          Añade goles, tarjetas o cambios del partido.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="table-wrapper">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>MINUTO</th>
+                              <th>EVENTO</th>
+                              <th>JUGADOR</th>
+                              <th>DESCRIPCIÓN</th>
+                              <th></th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {events.map(matchEvent => (
+                              <tr key={matchEvent.id}>
+                                <td>{matchEvent.minute}'</td>
+
+                                <td>
+                                  <span className="position">
+                                    {nombreTipoEvento(matchEvent.type)}
+                                  </span>
+                                </td>
+
+                                <td>
+                                  {matchEvent.player
+                                    ? `#${matchEvent.player.dorsal} ${matchEvent.player.nombre}`
+                                    : matchEvent.rivalDorsal
+                                      ? `Rival #${matchEvent.rivalDorsal}`
+                                      : 'No aplica'}
+                                </td>
+
+                                <td>
+                                  {matchEvent.description || '—'}
+                                </td>
+
+                                <td>
+                                  <div className="actions">
+                                    <button
+                                      className="delete-button"
+                                      onClick={() =>
+                                        eliminarEvento(matchEvent.id)
+                                      }
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                </section>
+              </>
+            )}
           </>
         )}
 
