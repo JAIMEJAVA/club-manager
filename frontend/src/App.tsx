@@ -334,6 +334,7 @@ function App() {
     )
       .then(response => response.json())
       .then(() => {
+        cargarPartidos()
         cargarEventos(partidoSeleccionado.id)
         limpiarFormularioEvento()
       })
@@ -349,6 +350,7 @@ function App() {
       }
     ).then(response => {
       if (response.ok) {
+        cargarPartidos()
         cargarEventos(partidoSeleccionado.id)
       }
     })
@@ -1090,221 +1092,219 @@ function App() {
             </section>
 
             {partidoSeleccionado !== null && (
-              <>
-                <section className="form-card">
-                  <div className="form-header">
-                    <div>
-                      <h2>
-                        Eventos: {partidoSeleccionado.local
-                          ? `Club Manager - ${partidoSeleccionado.rival}`
-                          : `${partidoSeleccionado.rival} - Club Manager`}
-                      </h2>
+              <section className="form-card">
+                <div className="form-header">
+                  <div>
+                    <h2>
+                      Eventos: {partidoSeleccionado.local
+                        ? `Club Manager - ${partidoSeleccionado.rival}`
+                        : `${partidoSeleccionado.rival} - Club Manager`}
+                    </h2>
 
-                      <p>
-                        {events.length} eventos registrados en este
-                        partido
-                      </p>
-                    </div>
-
-                    <div className="actions">
-                      <button
-                        className="secondary-button"
-                        onClick={cerrarEventos}
-                        type="button"
-                      >
-                        Cerrar
-                      </button>
-
-                      <button
-                        className="primary-button"
-                        onClick={() =>
-                          setMostrarFormularioEvento(true)
-                        }
-                        type="button"
-                      >
-                        + Añadir evento
-                      </button>
-                    </div>
+                    <p>
+                      {events.length} eventos registrados en este
+                      partido
+                    </p>
                   </div>
 
-                  {mostrarFormularioEvento && (
-                    <form onSubmit={crearEvento}>
-                      <div className="form-grid">
-                        <div className="form-group">
-                          <label>Tipo de evento</label>
+                  <div className="actions">
+                    <button
+                      className="secondary-button"
+                      onClick={cerrarEventos}
+                      type="button"
+                    >
+                      Cerrar
+                    </button>
 
-                          <select
-                            value={tipoEvento}
-                            onChange={event =>
-                              setTipoEvento(
-                                event.target.value as MatchEvent['type']
-                              )
-                            }
-                          >
-                            <option value="GOAL">⚽ Gol</option>
-                            <option value="YELLOW_CARD">
-                              🟨 Amarilla
-                            </option>
-                            <option value="RED_CARD">
-                              🟥 Roja
-                            </option>
-                            <option value="SUBSTITUTION">
-                              🔄 Cambio
-                            </option>
-                          </select>
-                        </div>
+                    <button
+                      className="primary-button"
+                      onClick={() =>
+                        setMostrarFormularioEvento(true)
+                      }
+                      type="button"
+                    >
+                      + Añadir evento
+                    </button>
+                  </div>
+                </div>
 
-                        <div className="form-group">
-                          <label>Minuto</label>
+                {mostrarFormularioEvento && (
+                  <form onSubmit={crearEvento}>
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label>Tipo de evento</label>
 
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="32"
-                            value={minutoEvento}
-                            onChange={event =>
-                              setMinutoEvento(event.target.value)
-                            }
-                            required
-                          />
-                        </div>
-
-                        <div className="form-group">
-                          <label>Jugador propio</label>
-
-                          <select
-                            value={jugadorEventoId}
-                            onChange={event =>
-                              setJugadorEventoId(event.target.value)
-                            }
-                          >
-                            <option value="">
-                              No aplica / evento rival
-                            </option>
-
-                            {players.map(player => (
-                              <option
-                                key={player.id}
-                                value={player.id}
-                              >
-                                #{player.dorsal} {player.nombre}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="form-group">
-                          <label>Dorsal rival</label>
-
-                          <input
-                            type="number"
-                            min="1"
-                            placeholder="9"
-                            value={dorsalRivalEvento}
-                            onChange={event =>
-                              setDorsalRivalEvento(event.target.value)
-                            }
-                          />
-                        </div>
-
-                        <div className="form-group">
-                          <label>Descripción</label>
-
-                          <input
-                            type="text"
-                            placeholder="Detalle opcional"
-                            value={descripcionEvento}
-                            onChange={event =>
-                              setDescripcionEvento(event.target.value)
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-actions">
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={limpiarFormularioEvento}
+                        <select
+                          value={tipoEvento}
+                          onChange={event =>
+                            setTipoEvento(
+                              event.target.value as MatchEvent['type']
+                            )
+                          }
                         >
-                          Cancelar
-                        </button>
+                          <option value="GOAL">⚽ Gol</option>
+                          <option value="YELLOW_CARD">
+                            🟨 Amarilla
+                          </option>
+                          <option value="RED_CARD">
+                            🟥 Roja
+                          </option>
+                          <option value="SUBSTITUTION">
+                            🔄 Cambio
+                          </option>
+                        </select>
+                      </div>
 
-                        <button
-                          type="submit"
-                          className="primary-button"
+                      <div className="form-group">
+                        <label>Minuto</label>
+
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="32"
+                          value={minutoEvento}
+                          onChange={event =>
+                            setMinutoEvento(event.target.value)
+                          }
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Jugador propio</label>
+
+                        <select
+                          value={jugadorEventoId}
+                          onChange={event =>
+                            setJugadorEventoId(event.target.value)
+                          }
                         >
-                          Guardar evento
-                        </button>
-                      </div>
-                    </form>
-                  )}
+                          <option value="">
+                            No aplica / evento rival
+                          </option>
 
-                  {!mostrarFormularioEvento &&
-                    (events.length === 0 ? (
-                      <div className="empty-state">
-                        <div>⚽</div>
-                        <h3>No hay eventos</h3>
-                        <p>
-                          Añade goles, tarjetas o cambios del partido.
-                        </p>
+                          {players.map(player => (
+                            <option
+                              key={player.id}
+                              value={player.id}
+                            >
+                              #{player.dorsal} {player.nombre}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    ) : (
-                      <div className="table-wrapper">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>MINUTO</th>
-                              <th>EVENTO</th>
-                              <th>JUGADOR</th>
-                              <th>DESCRIPCIÓN</th>
-                              <th></th>
+
+                      <div className="form-group">
+                        <label>Dorsal rival</label>
+
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="9"
+                          value={dorsalRivalEvento}
+                          onChange={event =>
+                            setDorsalRivalEvento(event.target.value)
+                          }
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>Descripción</label>
+
+                        <input
+                          type="text"
+                          placeholder="Detalle opcional"
+                          value={descripcionEvento}
+                          onChange={event =>
+                            setDescripcionEvento(event.target.value)
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-actions">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={limpiarFormularioEvento}
+                      >
+                        Cancelar
+                      </button>
+
+                      <button
+                        type="submit"
+                        className="primary-button"
+                      >
+                        Guardar evento
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {!mostrarFormularioEvento &&
+                  (events.length === 0 ? (
+                    <div className="empty-state">
+                      <div>⚽</div>
+                      <h3>No hay eventos</h3>
+                      <p>
+                        Añade goles, tarjetas o cambios del partido.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="table-wrapper">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>MINUTO</th>
+                            <th>EVENTO</th>
+                            <th>JUGADOR</th>
+                            <th>DESCRIPCIÓN</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {events.map(matchEvent => (
+                            <tr key={matchEvent.id}>
+                              <td>{matchEvent.minute}'</td>
+
+                              <td>
+                                <span className="position">
+                                  {nombreTipoEvento(matchEvent.type)}
+                                </span>
+                              </td>
+
+                              <td>
+                                {matchEvent.player
+                                  ? `#${matchEvent.player.dorsal} ${matchEvent.player.nombre}`
+                                  : matchEvent.rivalDorsal
+                                    ? `Rival #${matchEvent.rivalDorsal}`
+                                    : 'No aplica'}
+                              </td>
+
+                              <td>
+                                {matchEvent.description || '—'}
+                              </td>
+
+                              <td>
+                                <div className="actions">
+                                  <button
+                                    className="delete-button"
+                                    onClick={() =>
+                                      eliminarEvento(matchEvent.id)
+                                    }
+                                  >
+                                    Eliminar
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
-                          </thead>
-
-                          <tbody>
-                            {events.map(matchEvent => (
-                              <tr key={matchEvent.id}>
-                                <td>{matchEvent.minute}'</td>
-
-                                <td>
-                                  <span className="position">
-                                    {nombreTipoEvento(matchEvent.type)}
-                                  </span>
-                                </td>
-
-                                <td>
-                                  {matchEvent.player
-                                    ? `#${matchEvent.player.dorsal} ${matchEvent.player.nombre}`
-                                    : matchEvent.rivalDorsal
-                                      ? `Rival #${matchEvent.rivalDorsal}`
-                                      : 'No aplica'}
-                                </td>
-
-                                <td>
-                                  {matchEvent.description || '—'}
-                                </td>
-
-                                <td>
-                                  <div className="actions">
-                                    <button
-                                      className="delete-button"
-                                      onClick={() =>
-                                        eliminarEvento(matchEvent.id)
-                                      }
-                                    >
-                                      Eliminar
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ))}
-                </section>
-              </>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+              </section>
             )}
           </>
         )}

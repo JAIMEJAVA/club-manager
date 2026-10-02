@@ -2,11 +2,13 @@ package com.jaime.backend.service;
 
 import com.jaime.backend.model.Match;
 import com.jaime.backend.model.MatchEvent;
+import com.jaime.backend.model.MatchEventType;
 import com.jaime.backend.model.Player;
 import com.jaime.backend.repository.MatchEventRepository;
 import com.jaime.backend.repository.MatchRepository;
 import com.jaime.backend.repository.PlayerRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -35,7 +37,12 @@ public class MatchEventService {
         return matchEventRepository.findByMatchIdOrderByMinuteAsc(matchId);
     }
 
-    public MatchEvent createEvent(Long matchId, MatchEvent event, Long playerId) {
+    @Transactional
+    public MatchEvent createEvent(
+            Long matchId,
+            MatchEvent event,
+            Long playerId
+    ) {
         Match match = matchRepository.findById(matchId)
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
 
@@ -49,14 +56,48 @@ public class MatchEventService {
             event.setPlayer(player);
         }
 
-        return matchEventRepository.save(event);
-    }
+        MatchEvent savedEvent = matchEventRepository.save(event);
 
-    public void deleteEvent(Long eventId) {
-        if (!matchEventRepository.existsById(eventId)) {
-            throw new RuntimeException("Evento no encontrado");
+        if (event.getType() == MatchEventType.GOAL) {
+            boolean golPropio = playerId != null;
+            actualizarMarcador(match, golPropio, 1);
         }
 
-        matchEventRepository.deleteById(eventId);
+        return savedEvent;
+    }
+
+    @Transactional
+    public void deleteEvent(Long eventId) {
+        MatchEvent event = matchEventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado"));
+
+        if (event.getType() == MatchEventType.GOAL) {
+            boolean golPropio = event.getPlayer() != null;
+            actualizarMarcador(event.getMatch(), golPropio, -1);
+        }
+
+        matchEventRepository.delete(event);
+    }
+
+    private void actualizarMarcador(
+            Match match,
+            boolean golPropio,
+            int cambio
+    ) {
+        boolean sumaGolesLocal =
+                (match.isLocal() && golPropio)
+                        || (!match.isLocal() && !golPropio);
+
+        if (sumaGolesLocal) {
+            match.setGolesLocal(
+                    Math.max(0, match.getGolesLocal() + cambio)
+            );
+        } else {
+            match.setGolesVisitante(
+                    Math.max(0, match.getGolesVisitante() + cambio)
+            );
+        }
+
+        matchRepository.save(match);
     }
 }
