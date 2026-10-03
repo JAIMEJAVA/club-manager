@@ -41,6 +41,18 @@ const nombreTipoEvento = (type: MatchEvent['type']) => {
   return types[type]
 }
 
+const formatearTiempo = (segundos: number) => {
+  const minutos = Math.floor(segundos / 60)
+    .toString()
+    .padStart(2, '0')
+
+  const segundosRestantes = (segundos % 60)
+    .toString()
+    .padStart(2, '0')
+
+  return `${minutos}:${segundosRestantes}`
+}
+
 function App() {
   const [players, setPlayers] = useState<Player[]>([])
   const [matches, setMatches] = useState<Match[]>([])
@@ -51,7 +63,6 @@ function App() {
   const [edad, setEdad] = useState('')
   const [dorsal, setDorsal] = useState('')
   const [posicion, setPosicion] = useState('')
-
   const [jugadorEditando, setJugadorEditando] = useState<number | null>(null)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
 
@@ -77,6 +88,14 @@ function App() {
   const [dorsalRivalEvento, setDorsalRivalEvento] = useState('')
   const [descripcionEvento, setDescripcionEvento] = useState('')
 
+  const [partidoEnModoId, setPartidoEnModoId] =
+    useState<number | null>(null)
+  const [segundosPartido, setSegundosPartido] = useState(0)
+  const [cronometroActivo, setCronometroActivo] = useState(false)
+
+  const partidoEnModo =
+    matches.find(match => match.id === partidoEnModoId) ?? null
+
   const cargarJugadores = () => {
     fetch('http://localhost:8080/api/players')
       .then(response => response.json())
@@ -100,6 +119,16 @@ function App() {
     cargarPartidos()
   }, [])
 
+  useEffect(() => {
+    if (!cronometroActivo) return
+
+    const interval = window.setInterval(() => {
+      setSegundosPartido(segundos => segundos + 1)
+    }, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [cronometroActivo])
+
   const limpiarFormulario = () => {
     setNombre('')
     setEdad('')
@@ -121,9 +150,7 @@ function App() {
 
     fetch('http://localhost:8080/api/players', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nuevoJugador)
     })
       .then(response => response.json())
@@ -131,16 +158,6 @@ function App() {
         cargarJugadores()
         limpiarFormulario()
       })
-  }
-
-  const eliminarJugador = (id: number) => {
-    fetch(`http://localhost:8080/api/players/${id}`, {
-      method: 'DELETE'
-    }).then(response => {
-      if (response.ok) {
-        cargarJugadores()
-      }
-    })
   }
 
   const editarJugador = (player: Player) => {
@@ -166,9 +183,7 @@ function App() {
 
     fetch(`http://localhost:8080/api/players/${jugadorEditando}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(jugadorActualizado)
     })
       .then(response => response.json())
@@ -178,12 +193,16 @@ function App() {
       })
   }
 
+  const eliminarJugador = (id: number) => {
+    fetch(`http://localhost:8080/api/players/${id}`, {
+      method: 'DELETE'
+    }).then(response => {
+      if (response.ok) cargarJugadores()
+    })
+  }
+
   const abrirNuevoJugador = () => {
-    setJugadorEditando(null)
-    setNombre('')
-    setEdad('')
-    setDorsal('')
-    setPosicion('')
+    limpiarFormulario()
     setMostrarFormulario(true)
   }
 
@@ -217,9 +236,7 @@ function App() {
 
     fetch('http://localhost:8080/api/matches', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nuevoPartido)
     })
       .then(response => response.json())
@@ -245,27 +262,32 @@ function App() {
 
     if (partidoEditando === null) return
 
-    const partidoActualizado = {
+    actualizarPartido({
+      id: partidoEditando,
       rival,
       fecha,
       local,
       golesLocal: Number(golesLocal),
       golesVisitante: Number(golesVisitante),
       estado: estadoPartido
-    }
+    }).then(() => limpiarFormularioPartido())
+  }
 
-    fetch(`http://localhost:8080/api/matches/${partidoEditando}`, {
+  const actualizarPartido = (match: Match) => {
+    return fetch(`http://localhost:8080/api/matches/${match.id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(partidoActualizado)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        rival: match.rival,
+        fecha: match.fecha,
+        local: match.local,
+        golesLocal: match.golesLocal,
+        golesVisitante: match.golesVisitante,
+        estado: match.estado
+      })
     })
       .then(response => response.json())
-      .then(() => {
-        cargarPartidos()
-        limpiarFormularioPartido()
-      })
+      .then(() => cargarPartidos())
   }
 
   const eliminarPartido = (id: number) => {
@@ -276,6 +298,10 @@ function App() {
         if (partidoSeleccionado?.id === id) {
           setPartidoSeleccionado(null)
           setEvents([])
+        }
+
+        if (partidoEnModoId === id) {
+          cerrarModoPartido()
         }
 
         cargarPartidos()
@@ -326,9 +352,7 @@ function App() {
       `http://localhost:8080/api/matches/${partidoSeleccionado.id}/events${playerQuery}`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevoEvento)
       }
     )
@@ -345,14 +369,50 @@ function App() {
 
     fetch(
       `http://localhost:8080/api/matches/${partidoSeleccionado.id}/events/${eventId}`,
-      {
-        method: 'DELETE'
-      }
+      { method: 'DELETE' }
     ).then(response => {
       if (response.ok) {
         cargarPartidos()
         cargarEventos(partidoSeleccionado.id)
       }
+    })
+  }
+
+  const abrirModoPartido = (match: Match) => {
+    setPartidoEnModoId(match.id)
+    setPartidoSeleccionado(match)
+    setSegundosPartido(0)
+    setCronometroActivo(false)
+    setMostrarFormularioEvento(false)
+    cargarEventos(match.id)
+  }
+
+  const cerrarModoPartido = () => {
+    setCronometroActivo(false)
+    setSegundosPartido(0)
+    setPartidoEnModoId(null)
+    cerrarEventos()
+  }
+
+  const iniciarPartido = () => {
+    if (partidoEnModo === null) return
+
+    actualizarPartido({
+      ...partidoEnModo,
+      estado: 'EN_JUEGO'
+    }).then(() => {
+      setCronometroActivo(true)
+    })
+  }
+
+  const finalizarPartido = () => {
+    if (partidoEnModo === null) return
+
+    actualizarPartido({
+      ...partidoEnModo,
+      estado: 'FINALIZADO'
+    }).then(() => {
+      setCronometroActivo(false)
     })
   }
 
@@ -368,13 +428,316 @@ function App() {
     players.map(player => player.posicion)
   ).size
 
+  const formularioEventos = () => {
+    if (!mostrarFormularioEvento) return null
+
+    return (
+      <form onSubmit={crearEvento}>
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Tipo de evento</label>
+            <select
+              value={tipoEvento}
+              onChange={event =>
+                setTipoEvento(event.target.value as MatchEvent['type'])
+              }
+            >
+              <option value="GOAL">⚽ Gol</option>
+              <option value="YELLOW_CARD">🟨 Amarilla</option>
+              <option value="RED_CARD">🟥 Roja</option>
+              <option value="SUBSTITUTION">🔄 Cambio</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Minuto</label>
+            <input
+              type="number"
+              min="1"
+              placeholder="32"
+              value={minutoEvento}
+              onChange={event => setMinutoEvento(event.target.value)}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Jugador propio</label>
+            <select
+              value={jugadorEventoId}
+              onChange={event => setJugadorEventoId(event.target.value)}
+            >
+              <option value="">No aplica / evento rival</option>
+              {players.map(player => (
+                <option key={player.id} value={player.id}>
+                  #{player.dorsal} {player.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Dorsal rival</label>
+            <input
+              type="number"
+              min="1"
+              placeholder="9"
+              value={dorsalRivalEvento}
+              onChange={event =>
+                setDorsalRivalEvento(event.target.value)
+              }
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Descripción</label>
+            <input
+              type="text"
+              placeholder="Detalle opcional"
+              value={descripcionEvento}
+              onChange={event =>
+                setDescripcionEvento(event.target.value)
+              }
+            />
+          </div>
+        </div>
+
+        <div className="form-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={limpiarFormularioEvento}
+          >
+            Cancelar
+          </button>
+
+          <button type="submit" className="primary-button">
+            Guardar evento
+          </button>
+        </div>
+      </form>
+    )
+  }
+
+  const tablaEventos = () => {
+    if (events.length === 0) {
+      return (
+        <div className="empty-state">
+          <div>⚽</div>
+          <h3>No hay eventos</h3>
+          <p>Añade goles, tarjetas o cambios del partido.</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>MINUTO</th>
+              <th>EVENTO</th>
+              <th>JUGADOR</th>
+              <th>DESCRIPCIÓN</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {events.map(matchEvent => (
+              <tr key={matchEvent.id}>
+                <td>{matchEvent.minute}'</td>
+
+                <td>
+                  <span className="position">
+                    {nombreTipoEvento(matchEvent.type)}
+                  </span>
+                </td>
+
+                <td>
+                  {matchEvent.player
+                    ? `#${matchEvent.player.dorsal} ${matchEvent.player.nombre}`
+                    : matchEvent.rivalDorsal
+                      ? `Rival #${matchEvent.rivalDorsal}`
+                      : 'No aplica'}
+                </td>
+
+                <td>{matchEvent.description || '—'}</td>
+
+                <td>
+                  <div className="actions">
+                    <button
+                      className="delete-button"
+                      onClick={() => eliminarEvento(matchEvent.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  if (partidoEnModo !== null) {
+    const equipoLocal = partidoEnModo.local
+      ? 'Club Manager'
+      : partidoEnModo.rival
+
+    const equipoVisitante = partidoEnModo.local
+      ? partidoEnModo.rival
+      : 'Club Manager'
+
+    return (
+      <div className="app">
+        <aside className="sidebar">
+          <div>
+            <div className="brand">
+              <div className="brand-icon">⚽</div>
+              <div>
+                <h2>Club Manager</h2>
+                <span>Football Management</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="sidebar-footer">
+            <div className="avatar">JM</div>
+            <div>
+              <strong>Jaime</strong>
+              <span>Administrador</span>
+            </div>
+          </div>
+        </aside>
+
+        <main className="main-content">
+          <header className="topbar">
+            <div>
+              <p className="eyebrow">MODO PARTIDO</p>
+              <h1>{equipoLocal} - {equipoVisitante}</h1>
+              <p className="subtitle">
+                Gestiona el partido y registra sus eventos en directo
+              </p>
+            </div>
+
+            <button
+              className="secondary-button"
+              onClick={cerrarModoPartido}
+            >
+              ← Volver a partidos
+            </button>
+          </header>
+
+          <section className="stats">
+            <div className="stat-card">
+              <div>
+                <span>Marcador</span>
+                <strong>
+                  {partidoEnModo.golesLocal} - {partidoEnModo.golesVisitante}
+                </strong>
+              </div>
+              <div className="stat-icon">⚽</div>
+            </div>
+
+            <div className="stat-card">
+              <div>
+                <span>Tiempo de juego</span>
+                <strong>{formatearTiempo(segundosPartido)}</strong>
+              </div>
+              <div className="stat-icon">⏱</div>
+            </div>
+
+            <div className="stat-card">
+              <div>
+                <span>Estado</span>
+                <strong className="small-stat">
+                  {partidoEnModo.estado.replace('_', ' ')}
+                </strong>
+              </div>
+              <div className="stat-icon">◉</div>
+            </div>
+          </section>
+
+          <section className="form-card">
+            <div className="form-header">
+              <div>
+                <h2>Controles del partido</h2>
+                <p>
+                  El cronómetro funciona mientras esta pantalla está abierta.
+                </p>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              {!cronometroActivo ? (
+                <button
+                  className="primary-button"
+                  onClick={iniciarPartido}
+                >
+                  ▶ Iniciar / reanudar
+                </button>
+              ) : (
+                <button
+                  className="secondary-button"
+                  onClick={() => setCronometroActivo(false)}
+                >
+                  ⏸ Pausar partido
+                </button>
+              )}
+
+              <button
+                className="primary-button"
+                onClick={() => setMostrarFormularioEvento(true)}
+              >
+                + Registrar evento
+              </button>
+
+              <button
+                className="delete-button"
+                onClick={finalizarPartido}
+              >
+                Finalizar partido
+              </button>
+            </div>
+          </section>
+
+          {mostrarFormularioEvento && (
+            <section className="form-card">
+              <div className="form-header">
+                <div>
+                  <h2>Nuevo evento</h2>
+                  <p>Registra una acción ocurrida durante el partido.</p>
+                </div>
+              </div>
+
+              {formularioEventos()}
+            </section>
+          )}
+
+          <section className="players-card">
+            <div className="players-header">
+              <div>
+                <h2>Eventos del partido</h2>
+                <p>{events.length} eventos registrados</p>
+              </div>
+            </div>
+
+            {tablaEventos()}
+          </section>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <aside className="sidebar">
         <div>
           <div className="brand">
             <div className="brand-icon">⚽</div>
-
             <div>
               <h2>Club Manager</h2>
               <span>Football Management</span>
@@ -434,7 +797,6 @@ function App() {
 
         <div className="sidebar-footer">
           <div className="avatar">JM</div>
-
           <div>
             <strong>Jaime</strong>
             <span>Administrador</span>
@@ -461,7 +823,6 @@ function App() {
                   <span>Total jugadores</span>
                   <strong>{players.length}</strong>
                 </div>
-
                 <div className="stat-icon">♟</div>
               </div>
 
@@ -470,7 +831,6 @@ function App() {
                   <span>Edad media</span>
                   <strong>{edadMedia}</strong>
                 </div>
-
                 <div className="stat-icon">◷</div>
               </div>
 
@@ -479,7 +839,6 @@ function App() {
                   <span>Posiciones</span>
                   <strong>{posicionesDiferentes}</strong>
                 </div>
-
                 <div className="stat-icon">◎</div>
               </div>
             </section>
@@ -500,37 +859,25 @@ function App() {
                   </button>
                 </div>
 
-                {players.length === 0 ? (
-                  <div className="empty-state">
-                    <div>⚽</div>
-                    <h3>No hay jugadores</h3>
-                    <p>Añade jugadores para comenzar.</p>
-                  </div>
-                ) : (
-                  <div className="dashboard-players">
-                    {players.slice(0, 5).map(player => (
-                      <div
-                        className="dashboard-player"
-                        key={player.id}
-                      >
-                        <div className="player-info">
-                          <div className="player-avatar">
-                            {player.nombre.charAt(0).toUpperCase()}
-                          </div>
-
-                          <div>
-                            <strong>{player.nombre}</strong>
-                            <span>{player.posicion}</span>
-                          </div>
+                <div className="dashboard-players">
+                  {players.slice(0, 5).map(player => (
+                    <div className="dashboard-player" key={player.id}>
+                      <div className="player-info">
+                        <div className="player-avatar">
+                          {player.nombre.charAt(0).toUpperCase()}
                         </div>
-
-                        <span className="dashboard-dorsal">
-                          #{player.dorsal}
-                        </span>
+                        <div>
+                          <strong>{player.nombre}</strong>
+                          <span>{player.posicion}</span>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+
+                      <span className="dashboard-dorsal">
+                        #{player.dorsal}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="dashboard-card">
@@ -544,7 +891,6 @@ function App() {
                 <div className="next-match-empty">
                   <div className="match-icon">⚽</div>
                   <h3>{matches.length} partidos registrados</h3>
-
                   <p>
                     Entra en Partidos para consultar el calendario
                     y añadir nuevos encuentros.
@@ -568,7 +914,6 @@ function App() {
               <div>
                 <p className="eyebrow">EQUIPO</p>
                 <h1>Plantilla</h1>
-
                 <p className="subtitle">
                   Gestiona los jugadores de tu equipo
                 </p>
@@ -582,35 +927,6 @@ function App() {
               </button>
             </header>
 
-            <section className="stats">
-              <div className="stat-card">
-                <div>
-                  <span>Total jugadores</span>
-                  <strong>{players.length}</strong>
-                </div>
-
-                <div className="stat-icon">♟</div>
-              </div>
-
-              <div className="stat-card">
-                <div>
-                  <span>Edad media</span>
-                  <strong>{edadMedia}</strong>
-                </div>
-
-                <div className="stat-icon">◷</div>
-              </div>
-
-              <div className="stat-card">
-                <div>
-                  <span>Partidos</span>
-                  <strong>{matches.length}</strong>
-                </div>
-
-                <div className="stat-icon">◉</div>
-              </div>
-            </section>
-
             {mostrarFormulario && (
               <section className="form-card">
                 <div className="form-header">
@@ -620,18 +936,11 @@ function App() {
                         ? 'Nuevo jugador'
                         : 'Editar jugador'}
                     </h2>
-
-                    <p>
-                      {jugadorEditando === null
-                        ? 'Añade un jugador a tu plantilla'
-                        : 'Modifica los datos del jugador'}
-                    </p>
                   </div>
 
                   <button
                     className="close-button"
                     onClick={limpiarFormulario}
-                    type="button"
                   >
                     ×
                   </button>
@@ -647,10 +956,7 @@ function App() {
                   <div className="form-grid">
                     <div className="form-group">
                       <label>Nombre</label>
-
                       <input
-                        type="text"
-                        placeholder="Nombre del jugador"
                         value={nombre}
                         onChange={event =>
                           setNombre(event.target.value)
@@ -661,10 +967,8 @@ function App() {
 
                     <div className="form-group">
                       <label>Edad</label>
-
                       <input
                         type="number"
-                        placeholder="24"
                         value={edad}
                         onChange={event =>
                           setEdad(event.target.value)
@@ -675,10 +979,8 @@ function App() {
 
                     <div className="form-group">
                       <label>Dorsal</label>
-
                       <input
                         type="number"
-                        placeholder="10"
                         value={dorsal}
                         onChange={event =>
                           setDorsal(event.target.value)
@@ -689,7 +991,6 @@ function App() {
 
                     <div className="form-group">
                       <label>Posición</label>
-
                       <select
                         value={posicion}
                         onChange={event =>
@@ -697,19 +998,13 @@ function App() {
                         }
                         required
                       >
-                        <option value="">
-                          Selecciona posición
-                        </option>
+                        <option value="">Selecciona posición</option>
                         <option value="Portero">Portero</option>
                         <option value="Defensa">Defensa</option>
                         <option value="Lateral">Lateral</option>
-                        <option value="Mediocentro">
-                          Mediocentro
-                        </option>
+                        <option value="Mediocentro">Mediocentro</option>
                         <option value="Extremo">Extremo</option>
-                        <option value="Delantero">
-                          Delantero
-                        </option>
+                        <option value="Delantero">Delantero</option>
                       </select>
                     </div>
                   </div>
@@ -723,10 +1018,7 @@ function App() {
                       Cancelar
                     </button>
 
-                    <button
-                      type="submit"
-                      className="primary-button"
-                    >
+                    <button type="submit" className="primary-button">
                       {jugadorEditando === null
                         ? 'Añadir jugador'
                         : 'Guardar cambios'}
@@ -738,90 +1030,59 @@ function App() {
 
             <section className="players-card">
               <div className="players-header">
-                <div>
-                  <h2>Jugadores</h2>
-                  <p>{players.length} jugadores en la plantilla</p>
-                </div>
+                <h2>Jugadores</h2>
+                <p>{players.length} jugadores en la plantilla</p>
               </div>
 
-              {players.length === 0 ? (
-                <div className="empty-state">
-                  <div>⚽</div>
-                  <h3>No hay jugadores</h3>
-                  <p>Añade tu primer jugador para comenzar.</p>
-                </div>
-              ) : (
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>JUGADOR</th>
-                        <th>DORSAL</th>
-                        <th>EDAD</th>
-                        <th>POSICIÓN</th>
-                        <th></th>
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>JUGADOR</th>
+                      <th>DORSAL</th>
+                      <th>EDAD</th>
+                      <th>POSICIÓN</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {players.map(player => (
+                      <tr key={player.id}>
+                        <td>
+                          <strong>{player.nombre}</strong>
+                        </td>
+                        <td>#{player.dorsal}</td>
+                        <td>{player.edad} años</td>
+                        <td>
+                          <span className="position">
+                            {player.posicion}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="actions">
+                            <button
+                              className="edit-button"
+                              onClick={() => editarJugador(player)}
+                            >
+                              Editar
+                            </button>
+
+                            <button
+                              className="delete-button"
+                              onClick={() =>
+                                eliminarJugador(player.id)
+                              }
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-
-                    <tbody>
-                      {players.map(player => (
-                        <tr key={player.id}>
-                          <td>
-                            <div className="player-info">
-                              <div className="player-avatar">
-                                {player.nombre
-                                  .charAt(0)
-                                  .toUpperCase()}
-                              </div>
-
-                              <div>
-                                <strong>{player.nombre}</strong>
-                                <span>ID #{player.id}</span>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td>
-                            <span className="dorsal">
-                              {player.dorsal}
-                            </span>
-                          </td>
-
-                          <td>{player.edad} años</td>
-
-                          <td>
-                            <span className="position">
-                              {player.posicion}
-                            </span>
-                          </td>
-
-                          <td>
-                            <div className="actions">
-                              <button
-                                className="edit-button"
-                                onClick={() =>
-                                  editarJugador(player)
-                                }
-                              >
-                                Editar
-                              </button>
-
-                              <button
-                                className="delete-button"
-                                onClick={() =>
-                                  eliminarJugador(player.id)
-                                }
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </>
         )}
@@ -832,7 +1093,6 @@ function App() {
               <div>
                 <p className="eyebrow">CALENDARIO</p>
                 <h1>Partidos</h1>
-
                 <p className="subtitle">
                   Consulta los próximos partidos y resultados
                 </p>
@@ -855,18 +1115,11 @@ function App() {
                         ? 'Nuevo partido'
                         : 'Editar partido'}
                     </h2>
-
-                    <p>
-                      {partidoEditando === null
-                        ? 'Programa un partido para tu equipo'
-                        : 'Actualiza el marcador y el estado'}
-                    </p>
                   </div>
 
                   <button
                     className="close-button"
                     onClick={limpiarFormularioPartido}
-                    type="button"
                   >
                     ×
                   </button>
@@ -882,10 +1135,7 @@ function App() {
                   <div className="form-grid">
                     <div className="form-group">
                       <label>Rival</label>
-
                       <input
-                        type="text"
-                        placeholder="Nombre del rival"
                         value={rival}
                         onChange={event =>
                           setRival(event.target.value)
@@ -896,7 +1146,6 @@ function App() {
 
                     <div className="form-group">
                       <label>Fecha</label>
-
                       <input
                         type="date"
                         value={fecha}
@@ -909,7 +1158,6 @@ function App() {
 
                     <div className="form-group">
                       <label>Condición</label>
-
                       <select
                         value={local ? 'true' : 'false'}
                         onChange={event =>
@@ -923,7 +1171,6 @@ function App() {
 
                     <div className="form-group">
                       <label>Goles local</label>
-
                       <input
                         type="number"
                         min="0"
@@ -937,7 +1184,6 @@ function App() {
 
                     <div className="form-group">
                       <label>Goles visitante</label>
-
                       <input
                         type="number"
                         min="0"
@@ -951,7 +1197,6 @@ function App() {
 
                     <div className="form-group">
                       <label>Estado</label>
-
                       <select
                         value={estadoPartido}
                         onChange={event =>
@@ -960,15 +1205,9 @@ function App() {
                           )
                         }
                       >
-                        <option value="PROGRAMADO">
-                          Programado
-                        </option>
-                        <option value="EN_JUEGO">
-                          En juego
-                        </option>
-                        <option value="FINALIZADO">
-                          Finalizado
-                        </option>
+                        <option value="PROGRAMADO">Programado</option>
+                        <option value="EN_JUEGO">En juego</option>
+                        <option value="FINALIZADO">Finalizado</option>
                       </select>
                     </div>
                   </div>
@@ -982,10 +1221,7 @@ function App() {
                       Cancelar
                     </button>
 
-                    <button
-                      type="submit"
-                      className="primary-button"
-                    >
+                    <button type="submit" className="primary-button">
                       {partidoEditando === null
                         ? 'Crear partido'
                         : 'Guardar cambios'}
@@ -997,98 +1233,87 @@ function App() {
 
             <section className="players-card">
               <div className="players-header">
-                <div>
-                  <h2>Calendario</h2>
-                  <p>{matches.length} partidos registrados</p>
-                </div>
+                <h2>Calendario</h2>
+                <p>{matches.length} partidos registrados</p>
               </div>
 
-              {matches.length === 0 ? (
-                <div className="empty-state">
-                  <div>⚽</div>
-                  <h3>No hay partidos</h3>
-                  <p>
-                    Todavía no hay ningún partido registrado.
-                  </p>
-                </div>
-              ) : (
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>FECHA</th>
-                        <th>PARTIDO</th>
-                        <th>RESULTADO</th>
-                        <th>ESTADO</th>
-                        <th>ACCIONES</th>
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>FECHA</th>
+                      <th>PARTIDO</th>
+                      <th>RESULTADO</th>
+                      <th>ESTADO</th>
+                      <th>ACCIONES</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {matches.map(match => (
+                      <tr key={match.id}>
+                        <td>
+                          {new Date(
+                            `${match.fecha}T00:00:00`
+                          ).toLocaleDateString('es-ES')}
+                        </td>
+
+                        <td>
+                          <strong>
+                            {match.local
+                              ? `Club Manager - ${match.rival}`
+                              : `${match.rival} - Club Manager`}
+                          </strong>
+                        </td>
+
+                        <td>
+                          <span className="dorsal">
+                            {match.golesLocal} - {match.golesVisitante}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span className="position">
+                            {match.estado.replace('_', ' ')}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div className="actions">
+                            <button
+                              className="edit-button"
+                              onClick={() => abrirModoPartido(match)}
+                            >
+                              Modo partido
+                            </button>
+
+                            <button
+                              className="edit-button"
+                              onClick={() => abrirEventos(match)}
+                            >
+                              Eventos
+                            </button>
+
+                            <button
+                              className="edit-button"
+                              onClick={() => editarPartido(match)}
+                            >
+                              Editar
+                            </button>
+
+                            <button
+                              className="delete-button"
+                              onClick={() => eliminarPartido(match.id)}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-
-                    <tbody>
-                      {matches.map(match => (
-                        <tr key={match.id}>
-                          <td>
-                            {new Date(
-                              `${match.fecha}T00:00:00`
-                            ).toLocaleDateString('es-ES')}
-                          </td>
-
-                          <td>
-                            <strong>
-                              {match.local
-                                ? `Club Manager - ${match.rival}`
-                                : `${match.rival} - Club Manager`}
-                            </strong>
-                          </td>
-
-                          <td>
-                            <span className="dorsal">
-                              {match.golesLocal}
-                              {' - '}
-                              {match.golesVisitante}
-                            </span>
-                          </td>
-
-                          <td>
-                            <span className="position">
-                              {match.estado.replace('_', ' ')}
-                            </span>
-                          </td>
-
-                          <td>
-                            <div className="actions">
-                              <button
-                                className="edit-button"
-                                onClick={() => abrirEventos(match)}
-                              >
-                                Eventos
-                              </button>
-
-                              <button
-                                className="edit-button"
-                                onClick={() =>
-                                  editarPartido(match)
-                                }
-                              >
-                                Editar
-                              </button>
-
-                              <button
-                                className="delete-button"
-                                onClick={() =>
-                                  eliminarPartido(match.id)
-                                }
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             {partidoSeleccionado !== null && (
@@ -1100,210 +1325,28 @@ function App() {
                         ? `Club Manager - ${partidoSeleccionado.rival}`
                         : `${partidoSeleccionado.rival} - Club Manager`}
                     </h2>
-
-                    <p>
-                      {events.length} eventos registrados en este
-                      partido
-                    </p>
+                    <p>{events.length} eventos registrados</p>
                   </div>
 
                   <div className="actions">
                     <button
                       className="secondary-button"
                       onClick={cerrarEventos}
-                      type="button"
                     >
                       Cerrar
                     </button>
 
                     <button
                       className="primary-button"
-                      onClick={() =>
-                        setMostrarFormularioEvento(true)
-                      }
-                      type="button"
+                      onClick={() => setMostrarFormularioEvento(true)}
                     >
                       + Añadir evento
                     </button>
                   </div>
                 </div>
 
-                {mostrarFormularioEvento && (
-                  <form onSubmit={crearEvento}>
-                    <div className="form-grid">
-                      <div className="form-group">
-                        <label>Tipo de evento</label>
-
-                        <select
-                          value={tipoEvento}
-                          onChange={event =>
-                            setTipoEvento(
-                              event.target.value as MatchEvent['type']
-                            )
-                          }
-                        >
-                          <option value="GOAL">⚽ Gol</option>
-                          <option value="YELLOW_CARD">
-                            🟨 Amarilla
-                          </option>
-                          <option value="RED_CARD">
-                            🟥 Roja
-                          </option>
-                          <option value="SUBSTITUTION">
-                            🔄 Cambio
-                          </option>
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label>Minuto</label>
-
-                        <input
-                          type="number"
-                          min="1"
-                          placeholder="32"
-                          value={minutoEvento}
-                          onChange={event =>
-                            setMinutoEvento(event.target.value)
-                          }
-                          required
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label>Jugador propio</label>
-
-                        <select
-                          value={jugadorEventoId}
-                          onChange={event =>
-                            setJugadorEventoId(event.target.value)
-                          }
-                        >
-                          <option value="">
-                            No aplica / evento rival
-                          </option>
-
-                          {players.map(player => (
-                            <option
-                              key={player.id}
-                              value={player.id}
-                            >
-                              #{player.dorsal} {player.nombre}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label>Dorsal rival</label>
-
-                        <input
-                          type="number"
-                          min="1"
-                          placeholder="9"
-                          value={dorsalRivalEvento}
-                          onChange={event =>
-                            setDorsalRivalEvento(event.target.value)
-                          }
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label>Descripción</label>
-
-                        <input
-                          type="text"
-                          placeholder="Detalle opcional"
-                          value={descripcionEvento}
-                          onChange={event =>
-                            setDescripcionEvento(event.target.value)
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-actions">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={limpiarFormularioEvento}
-                      >
-                        Cancelar
-                      </button>
-
-                      <button
-                        type="submit"
-                        className="primary-button"
-                      >
-                        Guardar evento
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {!mostrarFormularioEvento &&
-                  (events.length === 0 ? (
-                    <div className="empty-state">
-                      <div>⚽</div>
-                      <h3>No hay eventos</h3>
-                      <p>
-                        Añade goles, tarjetas o cambios del partido.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="table-wrapper">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>MINUTO</th>
-                            <th>EVENTO</th>
-                            <th>JUGADOR</th>
-                            <th>DESCRIPCIÓN</th>
-                            <th></th>
-                          </tr>
-                        </thead>
-
-                        <tbody>
-                          {events.map(matchEvent => (
-                            <tr key={matchEvent.id}>
-                              <td>{matchEvent.minute}'</td>
-
-                              <td>
-                                <span className="position">
-                                  {nombreTipoEvento(matchEvent.type)}
-                                </span>
-                              </td>
-
-                              <td>
-                                {matchEvent.player
-                                  ? `#${matchEvent.player.dorsal} ${matchEvent.player.nombre}`
-                                  : matchEvent.rivalDorsal
-                                    ? `Rival #${matchEvent.rivalDorsal}`
-                                    : 'No aplica'}
-                              </td>
-
-                              <td>
-                                {matchEvent.description || '—'}
-                              </td>
-
-                              <td>
-                                <div className="actions">
-                                  <button
-                                    className="delete-button"
-                                    onClick={() =>
-                                      eliminarEvento(matchEvent.id)
-                                    }
-                                  >
-                                    Eliminar
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
+                {formularioEventos()}
+                {!mostrarFormularioEvento && tablaEventos()}
               </section>
             )}
           </>
@@ -1313,7 +1356,6 @@ function App() {
           <section className="placeholder-page">
             <div className="placeholder-icon">📊</div>
             <h1>Estadísticas</h1>
-
             <p>
               Aquí aparecerán estadísticas del equipo y de los
               jugadores.
