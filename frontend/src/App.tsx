@@ -805,6 +805,10 @@ function App() {
                   ? 'nav-item active'
                   : 'nav-item'
               }
+              onClick={() => {
+                 setPaginaActual('estadisticas')
+                  setMobileMenuOpen(false)
+                              }}
                           >
               <span>▥</span>
               Estadísticas
