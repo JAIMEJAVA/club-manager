@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import './App.css'
+import StatisticsPage from './StatisticsPage'
 
 type Player = {
   id: number
@@ -1352,16 +1353,7 @@ function App() {
           </>
         )}
 
-        {paginaActual === 'estadisticas' && (
-          <section className="placeholder-page">
-            <div className="placeholder-icon">📊</div>
-            <h1>Estadísticas</h1>
-            <p>
-              Aquí aparecerán estadísticas del equipo y de los
-              jugadores.
-            </p>
-          </section>
-        )}
+        {paginaActual === 'estadisticas' && <StatisticsPage />}
       </main>
     </div>
   )
