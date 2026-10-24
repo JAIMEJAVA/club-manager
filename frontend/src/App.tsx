@@ -59,6 +59,7 @@ function App() {
   const [matches, setMatches] = useState<Match[]>([])
   const [events, setEvents] = useState<MatchEvent[]>([])
   const [paginaActual, setPaginaActual] = useState<Pagina>('dashboard')
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const [nombre, setNombre] = useState('')
   const [edad, setEdad] = useState('')
@@ -98,19 +99,18 @@ function App() {
     matches.find(match => match.id === partidoEnModoId) ?? null
 
   const cargarJugadores = () => {
-    fetch('http://localhost:8080/api/players')
+    fetch('/api/players')
       .then(response => response.json())
       .then(data => setPlayers(data))
   }
-
   const cargarPartidos = () => {
-    fetch('http://localhost:8080/api/matches')
+    fetch('/api/matches')
       .then(response => response.json())
       .then(data => setMatches(data))
   }
 
   const cargarEventos = (matchId: number) => {
-    fetch(`http://localhost:8080/api/matches/${matchId}/events`)
+    fetch(`/api/matches/${matchId}/events`)
       .then(response => response.json())
       .then(data => setEvents(data))
   }
@@ -149,7 +149,7 @@ function App() {
       posicion
     }
 
-    fetch('http://localhost:8080/api/players', {
+    fetch('/api/players', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nuevoJugador)
@@ -182,7 +182,7 @@ function App() {
       posicion
     }
 
-    fetch(`http://localhost:8080/api/players/${jugadorEditando}`, {
+    fetch(`/api/players/${jugadorEditando}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(jugadorActualizado)
@@ -195,7 +195,7 @@ function App() {
   }
 
   const eliminarJugador = (id: number) => {
-    fetch(`http://localhost:8080/api/players/${id}`, {
+    fetch(`/api/players/${id}`, {
       method: 'DELETE'
     }).then(response => {
       if (response.ok) cargarJugadores()
@@ -235,7 +235,7 @@ function App() {
       estado: estadoPartido
     }
 
-    fetch('http://localhost:8080/api/matches', {
+    fetch('/api/matches', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nuevoPartido)
@@ -275,7 +275,7 @@ function App() {
   }
 
   const actualizarPartido = (match: Match) => {
-    return fetch(`http://localhost:8080/api/matches/${match.id}`, {
+    return fetch(`/api/matches/${match.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -292,7 +292,7 @@ function App() {
   }
 
   const eliminarPartido = (id: number) => {
-    fetch(`http://localhost:8080/api/matches/${id}`, {
+    fetch(`/api/matches/${id}`, {
       method: 'DELETE'
     }).then(response => {
       if (response.ok) {
@@ -350,7 +350,7 @@ function App() {
     }
 
     fetch(
-      `http://localhost:8080/api/matches/${partidoSeleccionado.id}/events${playerQuery}`,
+      `/api/matches/${partidoSeleccionado.id}/events${playerQuery}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -369,7 +369,7 @@ function App() {
     if (partidoSeleccionado === null) return
 
     fetch(
-      `http://localhost:8080/api/matches/${partidoSeleccionado.id}/events/${eventId}`,
+      `/api/matches/${partidoSeleccionado.id}/events/${eventId}`,
       { method: 'DELETE' }
     ).then(response => {
       if (response.ok) {
@@ -735,7 +735,24 @@ function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
+            <button
+        className="mobile-menu-button"
+        type="button"
+        aria-label="Abrir menú"
+        aria-expanded={mobileMenuOpen}
+        onClick={() => setMobileMenuOpen(true)}
+      >
+        ☰
+      </button>
+      {mobileMenuOpen && (
+        <button
+          className="mobile-menu-overlay"
+          type="button"
+          aria-label="Cerrar menú"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+<aside className={`sidebar ${mobileMenuOpen ? 'sidebar-open' : ''}`}>
         <div>
           <div className="brand">
             <div className="brand-icon">⚽</div>
@@ -752,7 +769,7 @@ function App() {
                   ? 'nav-item active'
                   : 'nav-item'
               }
-              onClick={() => setPaginaActual('dashboard')}
+              onClick={() => { setPaginaActual('dashboard'); setMobileMenuOpen(false) }}
             >
               <span>▦</span>
               Dashboard
@@ -764,7 +781,7 @@ function App() {
                   ? 'nav-item active'
                   : 'nav-item'
               }
-              onClick={() => setPaginaActual('plantilla')}
+              onClick={() => { setPaginaActual('plantilla'); setMobileMenuOpen(false) }}
             >
               <span>♟</span>
               Plantilla
@@ -776,7 +793,7 @@ function App() {
                   ? 'nav-item active'
                   : 'nav-item'
               }
-              onClick={() => setPaginaActual('partidos')}
+              onClick={() => { setPaginaActual('partidos'); setMobileMenuOpen(false) }}
             >
               <span>◉</span>
               Partidos
@@ -788,8 +805,7 @@ function App() {
                   ? 'nav-item active'
                   : 'nav-item'
               }
-              onClick={() => setPaginaActual('estadisticas')}
-            >
+                          >
               <span>▥</span>
               Estadísticas
             </button>
@@ -854,7 +870,7 @@ function App() {
 
                   <button
                     className="link-button"
-                    onClick={() => setPaginaActual('plantilla')}
+                    onClick={() => { setPaginaActual('plantilla'); setMobileMenuOpen(false) }}
                   >
                     Ver plantilla →
                   </button>
