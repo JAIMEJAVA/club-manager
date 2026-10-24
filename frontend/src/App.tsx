@@ -5,6 +5,7 @@ import StatisticsPage from './StatisticsPage'
 type Player = {
   id: number
   nombre: string
+  apellidos?: string
   edad: number
   dorsal: number
   posicion: string
@@ -62,6 +63,7 @@ function App() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const [nombre, setNombre] = useState('')
+  const [apellidos, setApellidos] = useState('')
   const [edad, setEdad] = useState('')
   const [dorsal, setDorsal] = useState('')
   const [posicion, setPosicion] = useState('')
@@ -132,6 +134,7 @@ function App() {
 
   const limpiarFormulario = () => {
     setNombre('')
+    setApellidos('')
     setEdad('')
     setDorsal('')
     setPosicion('')
@@ -144,6 +147,7 @@ function App() {
 
     const nuevoJugador = {
       nombre,
+      apellidos,
       edad: Number(edad),
       dorsal: Number(dorsal),
       posicion
@@ -164,6 +168,7 @@ function App() {
   const editarJugador = (player: Player) => {
     setJugadorEditando(player.id)
     setNombre(player.nombre)
+    setApellidos(player.apellidos ?? '')
     setEdad(String(player.edad))
     setDorsal(String(player.dorsal))
     setPosicion(player.posicion)
@@ -177,6 +182,7 @@ function App() {
 
     const jugadorActualizado = {
       nombre,
+      apellidos,
       edad: Number(edad),
       dorsal: Number(dorsal),
       posicion
@@ -888,8 +894,10 @@ function App() {
                           {player.nombre.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <strong>{player.nombre}</strong>
-                          <span>{player.posicion}</span>
+                      <strong>
+                        {player.nombre}
+                        {player.apellidos ? ` ${player.apellidos}` : ''}
+                      </strong>                          <span>{player.posicion}</span>
                         </div>
                       </div>
 
@@ -985,19 +993,16 @@ function App() {
                         required
                       />
                     </div>
-
                     <div className="form-group">
-                      <label>Edad</label>
+
+                      <label>Apellidos</label>
                       <input
-                        type="number"
-                        value={edad}
-                        onChange={event =>
-                          setEdad(event.target.value)
-                        }
-                        required
+                        value={apellidos}
+                        onChange={event => setApellidos(event.target.value)}
                       />
                     </div>
 
+            
                     <div className="form-group">
                       <label>Dorsal</label>
                       <input
@@ -1061,7 +1066,6 @@ function App() {
                     <tr>
                       <th>JUGADOR</th>
                       <th>DORSAL</th>
-                      <th>EDAD</th>
                       <th>POSICIÓN</th>
                       <th></th>
                     </tr>
@@ -1074,7 +1078,6 @@ function App() {
                           <strong>{player.nombre}</strong>
                         </td>
                         <td>#{player.dorsal}</td>
-                        <td>{player.edad} años</td>
                         <td>
                           <span className="position">
                             {player.posicion}
