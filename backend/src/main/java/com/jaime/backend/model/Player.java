@@ -1,4 +1,6 @@
 package com.jaime.backend.model;
+import javax.print.DocFlavor.STRING;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,6 +14,7 @@ public class Player {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String nombre;
+    private String apellidos;
     private int edad;
     private int dorsal;
     private String posicion;
@@ -38,6 +41,10 @@ public class Player {
     public String getNombre(){
         return nombre;
     }
+    
+    public String getApellidos(){
+        return apellidos;
+    }
 
     public int getEdad() {
         return edad;
@@ -55,6 +62,10 @@ public class Player {
     public void setNombre(String nombre) {
         this.nombre = nombre;
     }
+    
+    public void setApellidos(String apellidos) {
+    this.apellidos = apellidos;
+}
 
     public void setEdad(int edad) {
         this.edad = edad;
